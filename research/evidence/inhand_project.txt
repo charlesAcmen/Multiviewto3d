@@ -1,0 +1,865 @@
+
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+In-Hand 3D Object Scanning from an RGB Sequence
+
+
+  
+
+  
+
+ -->
+  
+
+    window.dataLayer = window.dataLayer || [];
+
+    function gtag() {
+      dataLayer.push(arguments);
+    }
+
+    gtag('js', new Date());
+
+    gtag('config', 'G-PYVRSFMDRL');
+  
+ -->
+
+  
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+
+  
+
+
+  
+
+
+  
+
+
+  
+
+
+  
+
+
+  
+
+    td, th {
+      border: 1px solid #dddddd;
+      text-align: center;
+      padding: 8px;
+    }
+  
+
+
+
+
+
+
+
+
+  
+
+    
+
+      
+
+
+      
+
+
+      
+
+
+    
+
+  
+
+
+
+
+
+
+
+  
+
+    
+
+      
+
+        
+
+          
+In-Hand 3D Object Scanning
+from an RGB Sequence
+
+          
+
+            
+
+              
+Shreyas Hampali
+
+1,3
+,
+
+            
+
+              
+Tomas Hodan
+
+1
+,
+
+            
+
+              
+Luan Tran
+
+1
+,
+            
+
+            
+
+              
+Lingni Ma
+
+1
+,
+            
+
+            
+
+              
+Cem Keskin
+
+1
+,
+            
+
+            
+
+              
+Vincent Lepetit
+
+2,3
+
+            
+
+          
+
+
+          
+
+            
+
+1
+Reality Labs at Meta,
+
+            
+
+2
+LIGM, Ecole des Ponts, Univ Gustave Eiffel, CNRS, Marne-la-Vallee, France,
+
+            
+
+3
+Institute for Computer Graphics and Vision, Graz University of Technology, Graz, Austria
+
+          
+
+
+          
+
+            
+
+              
+
+              
+
+                
+
+                  
+
+                      
+
+
+                  
+
+                  
+Paper (CVPR 2023)
+
+                
+
+              
+
+            
+
+
+          
+
+        
+
+      
+
+    
+
+  
+
+
+
+  
+
+
+  
+
+    
+Input                    Output
+
+  
+
+  
+
+    
+
+  
+
+  
+
+    
+
+  
+
+
+
+
+
+
+
+
+  
+
+    
+
+      
+
+        
+Abstract
+
+        
+
+          
+
+            We propose a method for in-hand 3D scanning of an unknown object from a sequence of color images. We cast the
+            problem as reconstructing the object surface from un-posed
+            multi-view images and rely on a neural implicit surface
+            representation that captures both the geometry and the appearance of the object. By contrast with most NeRF-based
+            methods, we do not assume that the camera-object relative
+            poses are known and instead simultaneously optimize both
+            the object shape and the pose trajectory. As global optimization over all the shape and pose parameters is prone
+            to fail without coarse-level initialization of the poses, we
+            propose an incremental approach which starts by splitting
+            the sequence into carefully selected overlapping segments
+            within which the optimization is likely to succeed. We incrementally reconstruct the object shape and track the object
+            poses independently within each segment, and later merge
+            all the segments by aligning poses estimated at the overlapping frames. Finally, we perform a global optimization
+            over all the aligned segments to achieve full reconstruction.
+            We experimentally show that the proposed method is able to
+            reconstruct the shape and color of both textured and challenging texture-less objects, outperforms classical methods
+            that rely only on appearance features, and its performance
+            is close to recent methods that assume known camera poses.
+          
+
+        
+
+      
+
+    
+
+  
+
+
+
+
+
+
+
+
+
+
+  
+
+    
+
+      
+
+        
+
+          
+
+
+        
+
+      
+
+    
+
+  
+
+
+
+
+
+
+
+
+  
+
+    
+
+      
+
+        Input
+      
+
+      
+
+        Output Shape
+      
+
+      
+
+        Output Poses
+      
+
+      
+
+        Download link
+      
+
+    
+
+    
+
+      
+
+        
+
+          
+
+        Your browser does not support HTML video.
+        
+
+      
+
+      
+
+        
+
+          
+
+          Your browser does not support HTML video.
+        
+
+      
+
+      
+
+        
+
+          
+
+        Your browser does not support HTML video.
+        
+
+      
+
+      
+
+        
+Download Shape and Poses
+
+      
+
+    
+
+    
+
+      
+
+        
+
+          
+
+        Your browser does not support HTML video.
+        
+
+      
+
+      
+
+        
+
+          
+
+          Your browser does not support HTML video.
+        
+
+      
+
+      
+
+        
+
+          
+
+        Your browser does not support HTML video.
+        
+
+      
+
+      
+
+        
+Download Shape and Poses
+
+      
+
+    
+
+    
+
+      
+
+        
+
+          
+
+        Your browser does not support HTML video.
+        
+
+      
+
+      
+
+        
+
+          
+
+          Your browser does not support HTML video.
+        
+
+      
+
+      
+
+        
+
+          
+
+        Your browser does not support HTML video.
+        
+
+      
+
+      
+
+        
+Download Shape and Poses
+
+      
+
+    
+
+    
+
+      
+
+        
+
+          
+
+        Your browser does not support HTML video.
+        
+
+      
+
+      
+
+        
+
+          
+
+          Your browser does not support HTML video.
+        
+
+      
+
+      
+
+        
+
+          
+
+        Your browser does not support HTML video.
+        
+
+      
+
+      
+
+        
+Download Shape and Poses
+
+      
+
+    
+
+    
+
+      
+
+        
+
+          
+
+        Your browser does not support HTML video.
+        
+
+      
+
+      
+
+        
+
+          
+
+          Your browser does not support HTML video.
+        
+
+      
+
+      
+
+        
+
+          
+
+        Your browser does not support HTML video.
+        
+
+      
+
+      
+
+        
+Download Shape and Poses
+
+      
+
+    
+
+    
+
+      
+
+        
+
+          
+
+        Your browser does not support HTML video.
+        
+
+      
+
+      
+
+        
+
+          
+
+          Your browser does not support HTML video.
+        
+
+      
+
+      
+
+        
+
+          
+
+        Your browser does not support HTML video.
+        
+
+      
+
+      
+
+        
+Download Shape and Poses
+
+      
+
+    
+
+    
+
+      
+
+        
+
+          
+
+        Your browser does not support HTML video.
+        
+
+      
+
+      
+
+        
+
+          
+
+          Your browser does not support HTML video.
+        
+
+      
+
+      
+
+        
+
+          
+
+        Your browser does not support HTML video.
+        
+
+      
+
+      
+
+        
+Download Shape and Poses
+
+      
+
+    
+
+    
+
+      
+
+        
+
+          
+
+        Your browser does not support HTML video.
+        
+
+      
+
+      
+
+        
+
+          
+
+          Your browser does not support HTML video.
+        
+
+      
+
+      
+
+        
+
+          
+
+        Your browser does not support HTML video.
+        
+
+      
+
+      
+
+        
+Download Shape and Poses
+
+      
+
+    
+
+    
+
+      
+
+        
+
+          
+
+        Your browser does not support HTML video.
+        
+
+      
+
+      
+
+        
+
+          
+
+          Your browser does not support HTML video.
+        
+
+      
+
+      
+
+        
+
+          
+
+        Your browser does not support HTML video.
+        
+
+      
+
+      
+
+        
+Download Shape and Poses
+
+      
+
+    
+
+    
+
+      
+
+        
+
+          
+
+        Your browser does not support HTML video.
+        
+
+      
+
+      
+
+        
+
+          
+
+          Your browser does not support HTML video.
+        
+
+      
+
+      
+
+        
+
+          
+
+        Your browser does not support HTML video.
+        
+
+      
+
+      
+
+        
+Download Shape and Poses
+
+      
+
+    
+
+  
+
+
+
+
+
+
+
+  
+
+    
+BibTeX
+
+    
+
+@article{hampali2023inhand,
+  author    = {Hampali, Shreyas and Hodan, Tomas and Tran, Luan and Ma, Lingni and Keskin, Cem and Lepetit, Vincent},
+  title     = {In-Hand 3D Object Scanning from an RGB Sequence},
+  journal   = {CVPR},
+  year      = {2023},
+}
+
+
+  
+
+
+
+
+
+
+
+  
+
+    
+
+      
+
+        
+
+          
+
+            The website template is borrowed from 
+nerfies
+.
+          
+
+        
+
+      
+
+    
+
+  
+
+
+
+
+
+
+
+

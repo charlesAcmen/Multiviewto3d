@@ -1,0 +1,1050 @@
+=== PAGE 1 ===
+ManifoldNeuS: Manifold-aware View Optimizability for Pose-Free Neural
+Surface Reconstruction
+Xinxin Liu Xue Wang Guoqing Zhou Qing Wang *
+School of Computer Science, Northwestern Polytechnical University, Xi’an 710072, China
+liuxxin26@mail.nwpu.edu.cn,{xwang, zhouguoqing, qwang}@nwpu.edu.cn
+Abstract
+Jointly optimizing camera poses and object geometry
+from unposed images is a challenging task in neural sur-
+face reconstruction. Existing methods often suffer from pose
+drift and geometric distortion, stemming from the easy-view
+bias — uniform view optimization favors easy-to-optimize
+views with abundant texture and good overlap that domi-
+nate gradient updates, while hard-to-optimize counterparts
+with weak texture or limited overlap yet critical for geo-
+metric completeness are progressively marginalized. To ad-
+dress this, we propose ManifoldNeuS, a novel method that
+explicitly models and leverages per-view optimizability to
+guide pose-free neural surface reconstruction. Specifically,
+we introduce the manifold-aware view optimizability score
+(MaVOS), which jointly assesses immediate fitness (the ease
+of optimizing each view) and long-term coverage gain (the
+value of optimizing each view) over the view-coherent man-
+ifold. Building on the MaVOS, we further devise a recon-
+struction pipeline that incorporates the per-view optimiz-
+ability as a state control signal to guide the joint optimiza-
+tion process through three key components: dynamic view
+scheduling, gated positional encoding, and anti-score loss
+weighting. Experimental results on the benchmark dataset
+demonstrate that ManifoldNeuS outperforms existing meth-
+ods in terms of accurate pose estimation and high-quality
+reconstruction, achieving robust joint optimization without
+known camera poses.
+1. Introduction
+Multi-view 3D reconstruction is a cornerstone problem
+in computer vision and graphics. Recently, remarkable
+progress has been achieved in 3D reconstruction using neu-
+ral radiance fields (NeRFs) [42] and 3D Gaussian Splat-
+ting (3DGS) [29]. However, these methods typically
+assume access to accurate camera poses, usually esti-
+mated by Structure-from-Motion (SfM) pipelines such as
+*Corresponding author.
+COLMAP [49], which limits their practical implementa-
+tion when pose estimates are noisy or unavailable. Conse-
+quently, jointly optimizing camera poses and scene geome-
+try has attracted considerable attention.
+Despite it being a severely ill-posed optimization prob-
+lem, recent efforts have explored various methodologies to
+tackle this challenge. Methods based on 3DGS achieve re-
+markable rendering quality, yet their explicit, discrete rep-
+resentation fundamentally conflicts with the thin nature of
+surfaces, limiting their ability to recover intricate geome-
+try [22, 69]. Moreover, 3DGS-based joint optimization re-
+lies on additional well-initialized point clouds, increasing
+sensitivity to camera parameters [18]. Methods based on
+Transformer frameworks leverage strong data-driven priors
+to regress geometry and poses directly, but generally require
+large-scale datasets with ground-truth poses for supervi-
+sion [6]. In contrast, neural implicit methods enable contin-
+uous surface representations well-suited for high-fidelity re-
+construction via enforcing multi-view consistency and dif-
+ferentiable volume rendering [17, 34].
+While previous works have explored joint optimization
+of camera poses and geometry within implicit representa-
+tion frameworks [2, 23, 33, 48], they typically optimize
+all views uniformly, leading to a critical yet underexplored
+challenge, which we termeasy-view bias. This bias man-
+ifests in two intertwined dimensions that destabilize joint
+optimization: First, local gradient dominance causes highly
+overlapping views to produce disproportionately strong gra-
+dients early in the optimization. Consequently, these “easy
+views” quickly lock their camera poses while dominating
+geometry updates, starving weakly-textured regions of es-
+sential gradient signals. Second, and more fundamentally,
+global coverage neglect arises when optimization favors
+immediate photometric accuracy over long-term geometric
+completeness. Candidate views covering previously unob-
+served regions provide critical topological value that out-
+weighs their short-term optimization difficulty. Marginaliz-
+ing them forces pose drift, resulting in the reconstruction of
+fragments, rather than the lack of local details.
+To this end, we propose ManifoldNeuS to break the easy-
+This CVPR paper is the Open Access version, provided by the Computer Vision Foundation.
+Except for this watermark, it is identical to the accepted version;
+the final published version of the proceedings is available on IEEE Xplore.
+261
+
+
+=== PAGE 2 ===
+view bias by fundamentally modeling the optimizability of
+views in pose-free neural surface reconstruction. The core
+idea is that a view’s optimizability, namely whether it is
+both easy and worthwhile to optimize, is determined by
+both its immediate fitness,i.e., how effectively it accel-
+erates convergence and refines existing geometry, and its
+long-term coverage gain,i.e., how much it expands topolog-
+ical coverage and helps recover unknown geometry. Cru-
+cially, evaluating coverage gain requires modeling topolog-
+ical relationships among views, where Euclidean metrics
+are insufficient. To formalize this insight, we introduce
+the manifold-aware view optimizability score (MaVOS), a
+novel metric that unifies both local constraint strength and
+global topological coverage. The former quantifies im-
+mediate fitness through feature matching, while the latter
+measures long-term coverage gain via minimum distances
+over an embedded view graph. Building on MaVOS, we
+propose a MaVOS-guided reconstruction method to trans-
+form per-view optimizability into overall optimization sta-
+bility, including view scheduling with dynamic refinement
+to guide progressive optimization from local to global,
+MaVOS-gated positional encoding to prevent premature
+high-frequency interference on poses by modulating fre-
+quency bands, and anti-score loss weighting to rebalance
+gradient contributions across views.
+In summary, our main contributions are as follows:
+1. We identify the easy-view bias in pose-free neural sur-
+face reconstruction: uniform view optimization favors
+easy-to-optimize views while overlooking those valu-
+able topology-enhancing ones, leading to pose drift and
+geometric distortion.
+2. We introduce a manifold-aware view optimizability
+score that unifies local constraint strength and global
+topological coverage to quantify immediate fitness and
+long-term topological gain.
+3. We develop a MaVOS-guided reconstruction pipeline
+that transforms per-view optimizability into overall opti-
+mization stability, thereby enhancing 3D reconstruction
+quality from unposed views.
+2. Related Work
+Scene representations for 3D reconstruction.Ad-
+vances in multi-view 3D reconstruction are driven by three
+paradigms: transformer-based, 3DGS-based, and neural im-
+plicit methods. Transformer-based methods [6, 31, 50, 53,
+56, 57], like DUST3R [57] and VGGT [53], enable feed-
+forward and calibration-free reconstruction by directly re-
+gressing 3D structure and poses, but require extensive su-
+pervised training on pose-annotated data; in contrast, we
+recover geometry and poses from unposed images without
+pose supervision. 3DGS [29] provides an explicit repre-
+sentation for high-quality novel view synthesis, modeling
+scenes as anisotropic Gaussians optimized via a Gaussian
+rasterizer. Despite extensions [4, 13, 21, 22, 38, 67, 69] tar-
+geting surface reconstruction, its discrete and unstructured
+point representation is primarily optimized for appearance
+rather than geometric regularization, yielding noisy and
+fragmented surfaces. In unposed settings, 3DGS faces addi-
+tional challenges due to its dependency on well-initialized
+point clouds. Most methods thus utilize external priors,
+such as off-the-shelf geometric predictors [9, 11, 15, 66]
+or depth estimators [18, 32] for initialization, yet are unre-
+liable without ground-truth poses and typically restrict ap-
+plicability to ordered data [25, 26, 28, 61]. Consequently,
+few works have demonstrated robust surface reconstruction
+from unposed images within the 3DGS framework.
+Neural implicit methods, initiated by NeRF [42], model
+appearance and geometry as continuous functions. Sub-
+sequent works, like UNISURF [43], V olSDF [65], and
+NeuS [55], advance geometric modeling by incorporat-
+ing implicit occupancy fields or signed distance functions
+(SDFs) via volume rendering. Among them, SDF-based
+methods [17, 34, 36, 47, 55, 59, 65, 68] extract the surface
+as the zero-level set of SDF using the Marching Cubes al-
+gorithm [37], producing stronger geometric fidelity [48]. In
+this work, we build our framework upon neural implicit rep-
+resentations, particularly NeuS, owing to its surface fidelity.
+Pose-free neural implicit representation.To eliminate re-
+liance on precomputed poses, recent work jointly optimizes
+camera poses and neural scene representations with poses
+as learnable parameters. Early methods [5, 12, 60, 63] han-
+dle only forward-facing scenes; subsequent works support
+complex trajectories but require accurate pose priors, ei-
+ther near-ground-truth initializations [7, 16, 35, 44, 62] or
+known distributions [10, 39, 40, 70, 71]. Recent attempts
+adopt identity initialization to remove priors, yet suffer from
+local minima, motivating geometric cues (e.g.monocu-
+lar depth, optical flow) [3, 24, 54] or incremental SLAM-
+inspired incremental registration [41, 45, 58, 64, 72].
+The aforementioned methods target novel view synthe-
+sis; neural surface reconstruction demands far stricter pose
+accuracy. Minor misalignments propagate to severe geo-
+metric distortion, as SDFs require highly consistent multi-
+view constraints to reach the correct zero level set. Meth-
+ods like PoRF [2] and SC-NeuS [23] handle noisy poses
+yet rely on coarse pose estimates, leaving truly pose-free
+surface reconstruction under-explored. NoPose-NeuS [48]
+leverages monocular-depth-supervised feature consistency;
+ParaSurRe [33] employs cluster-wise incremental recon-
+struction with PnP-based SDF fusion. However, both adopt
+uniform training, treating all views equally regardless of
+per-view optimizability differences. We address this by
+quantifying per-view optimizability to guide pose-free neu-
+ral surface reconstruction.
+262
+
+
+=== PAGE 3 ===
+3. Method
+Given a collection of unposed images, our goal is to re-
+cover camera poses and neural surface geometry simulta-
+neously. To address easy-view bias induced by uniform
+optimization in pose-free neural surface reconstruction, we
+propose a comprehensive method centered on the manifold-
+aware view optimizability score (MaVOS) (Sec. 3.2), as il-
+lustrated in Fig. 1. MaVOS quantifies per-view optimiz-
+ability via local constraint strength and, crucially, globally
+topological coverage measured on a view-coherent mani-
+fold approximated from multi-view geometric consistency.
+This manifold-aware design yields a balanced MaVOS that
+jointly accounts for the ease and value of optimizing each
+view. We then integrate MaVOS into the optimization pro-
+cess via three complementary components (Sec. 3.3), which
+transform per-view optimizability into a state-aware control
+signal within the NeuS framework, enabling stable and ac-
+curate joint optimization from unposed images.
+3.1. Preliminaries
+Our work is built on the SDF-based neural surface recon-
+struction, which implicitly represents scene geometry and
+appearance with the zero-set level of SDF fields and color
+fields. Given a 3D pointx, the implicit SDF field maps it to
+a signed distanced(x)and a geometry featureℓ(x). The ap-
+pearance is modeled by a color field, which takes the spatial
+pointx, its view directionv, the normaln(x)calculated by
+the gradient ofd(x), and the geometry featureℓ(x)as in-
+puts and outputs colorc:
+(d(x), ℓ(x)) =F g(x),c(x) =F c(x,v,n(x), ℓ(x)), (1)
+whereF g andF c are approximated via multi-layer percep-
+tron (MLP) networks. To compute the color of an image
+pixel, we approximate volume rendering [27] by numerical
+quadrature. Givennpointsx i sampled along its camera ray
+r, the expected color of that pixel is given by:
+ˆc= Pn
+i=1 Tiαici,
+Ti =Qi−1
+j=1(1−α j), αi = 1−exp
+
+−
+R ti+1
+ti
+ρ(t)dt
+, (2)
+wherec i is the output color by Eq. 1,Ti represents the accu-
+mulated transmittance,α i denotes the discrete opacity,ρ(t)
+is an opaque density function from NeuS [55].
+To capture high-frequency details, positional encoding
+(PE) [51, 52] maps inputs into a higher-dimensional space
+using functions withLfrequency bases. However, in joint
+optimization, high-frequency PE complicates effective up-
+dates of low-frequency pose parameters during backpropa-
+gation. To address this, BARF [35] introduces a coarse-to-
+fine strategy that gradually activates PE frequency bases via
+a weight functionφ. GivenLtotal frequency bases, thel-th
+PE frequency base in BARF is defined as:
+γl(x;β) =φ l(β)·
+
+sin(2lπx),cos(2 lπx)
+
+, (3)
+whereφ l(β) = 1
+2 [1−cos(clamp(β−l,0,1)π)], andβ∈
+[0, L−1]is a controllable parameter proportional to the op-
+timization progress.
+For the camera parameterization, in this work, we as-
+sume that camera intrinsics are available and focus on esti-
+mating the camera pose[R i|ti]with a rotationR i ∈SO(3)
+and a translationt i ∈R 3.
+3.2. Manifold-Aware View Optimizability Score
+To quantify the per-view optimizability, we convert the im-
+mediate fitness and long-term coverage gain into local con-
+straint strength and global topological coverage.
+We first evaluate the ease of optimizing a view through
+local constraint strength, which reflects its convergence
+speed based on multi-view geometric consistency. This
+is naturally captured by feature co-visibility: views with
+strong feature correspondences receive stronger geometric
+constraints during pose estimation, leading to faster con-
+vergence and higher optimization stability [49]. Given an
+image collectionV={v i}N
+i=1, we therefore construct a co-
+visibility-matrixW∈R N×N , where each elementW ij
+denotes the number of feature correspondences between
+vi andv j. Notably,Wpurely measures feature-level co-
+visibility without geometric verification (e.g., RANSAC) at
+this stage. The local constraint strength for viewv i is then
+computed as:
+σi =
+NX
+j=1
+Wij
+.  NX
+i=1
+NX
+j=1
+Wij
+
+. (4)
+A view with a largerσ i indicates stronger immediate geo-
+metric constraints, enabling faster convergence during early
+optimization stages while dominating gradient updates.
+However, local constraint strength is inherently limited
+by its pairwise correspondence model, which ignores scene
+geometry and fails to distinguish globally redundant views
+from topologically critical ones. For instance, two views
+covering unobserved regions may appear equally valuable
+in image space, yet only the one connecting disconnected
+geometric components provides critical topological gain.
+To resolve global coverage neglect, we introduce a
+manifold-aware topological coverage that identifies struc-
+turally critical views within the scene geometry. We per-
+form spectral embedding on the view graph induced by
+the co-visibility matrixW. Let degree matrixDwith
+Dii =PN
+j=1 Wij, we construct the symmetric normalized
+LaplacianL sym =I−D −1/2WD−1/2. We then solve
+Lsymuk =λ kuk, whereλ k is thek-th smallest eigenvalue,
+and obtain the spectral embeddingE= [u 2, . . . ,ud+1]∈
+RN×d , whereu 1 is discarded as the trivial constant mode.
+This embedding projects feature-level co-visibility onto
+a low-dimensional manifold where we measure a view’s
+topological coveragee i through its normalized minimum
+263
+
+
+=== PAGE 4 ===
+Figure 1.Method Overview.(a) Given multi-view image collections without known camera poses, (b) we compute a manifold-aware
+view optimizability score (MaVOS). MaVOS evaluates both the local constraint strength derived from feature matching and the global
+topological coverage measured by minimum geodesic distances on an embedded view graph. (c) Based on this, we design a MaVOS-
+guided reconstruction that progressively estimates camera poses and recovers scene geometry. Initially, we determine the optimization
+order of anchor views and their successors, dynamically reordering successor views after each update of the anchor set to enhance global
+consistency. For each optimization round, we introduce MaVOS-gated positional encoding that adaptively adjusts activation timing of
+high-frequency bands to prevent premature pose oscillation, and apply anti-score loss weighting to ensure balanced gradient contributions
+across all views. (d) By integrating these three components, we achieve a final 3D reconstruction with accurate camera poses and high-
+quality scene geometry.
+distance to other views in the manifold space as:
+ei = min
+vj ∈V
+Ei −E j
+
+2. (5)
+Largere i values identify views in unexplored manifold re-
+gions that provide critical topological coverage.
+By combing the local constraint strengthσ i in Eq. 4 and
+the global topological coveragee i in Eq. 5, we obtain the
+unified view optimizability scoreS i as:
+Si =α·σ i + (1−α)·e i, (6)
+whereα∈[0,1]serves as a balancing hyperparameter.
+Views with highS i values possess either strong multi-view
+constraints, significant potential to cover unexplored man-
+ifold coverage, or an optimal combination of both proper-
+ties; conversely, low-scoring views lack both optimization
+stability and structural significance. This dual-aware scor-
+ing mechanism quantifies both the immediate fitness and
+long-term coverage gain of each view, providing principled
+guidance for the following reconstruction.
+3.3. MaVOS-Guided Reconstruction
+We apply this unified scoring to make the optimization
+view-aware within the NeuS framework. First, MaVOS-
+based view scheduling establishes a dynamic optimiza-
+tion sequence: we initialize reconstruction with a set
+of high-MaVOS views as anchors, then continuously re-
+order remaining views based on evolving MaVOS evalu-
+ations, enabling stable local-to-global convergence. Sec-
+ond, MaVOS-gated positional encoding adaptively mod-
+ulates activation of frequency bases, specifically delaying
+high-frequency components for high-MaVOS views to pre-
+vent premature detail fitting from destabilizing pose esti-
+mation. Third, anti-score loss weighting calibrates gradient
+contributions by assigning higher weights to low-MaVOS
+views. Collectively, these components transform per-view
+optimizability into a state-aware optimization control signal
+for a stable joint optimization.
+View scheduling with dynamic refinement.Our view
+scheduling strategy implements a progressive optimization
+paradigm: first establishing a geometrically stable core
+through reliable anchor views, then incrementally expand-
+ing reconstruction coverage through dynamically selecting
+remaining views.
+We initialize reconstruction with the top-Kviews ranked
+by MaVOS values to form the anchor setA. The parame-
+terKis determined by the local constraint strengthσ i, as
+a highσ i value guarantees sufficient pairwise feature corre-
+spondences, which are essential for stabilizing initial pose
+and geometry estimation.
+Following anchor initialization, we perform incremental
+264
+
+
+=== PAGE 5 ===
+expansion through multiple optimization rounds. In each
+round, we selectMviews from the candidate poolRusing
+a greedy strategy that maximizes the refinement score:
+Srj =α·σ A(j) + (1−α)·e A(j), (7)
+whereσ A(j) = 1
+|A|
+P
+vi∈A Wij quantifies the average co-
+visibility between candidate viewv j and the current an-
+chors setA, ande A(j)represents the normalized geodesic
+distance to its nearest anchor whin the manifold space.
+Given an initialized successor set asM=∅, the selec-
+tion process iteratively identifiesv ∗
+j = arg max vj ∈R Srj ,
+appends it toM, and dynamically updates the anchor set
+A ← A ∪ {v ∗
+j }. This progressive expansion with refine-
+ment enables adaptive scene exploration with the exploita-
+tion of already-established structural constraints. Further-
+more, in subsequent optimization stages, instead of identity
+initialization, we initialize each successor view’s poses by
+inheriting the predicted camera poses of the anchor view
+with the most similar MaVOS value to reduce optimization
+oscillation and accelerate convergence by preserving pose
+continuity across stages.
+MaVOS-gated positional encoding.Joint optimization of
+camera poses and scene geometry exhibits high sensitiv-
+ity to PE activation schedules. While BARF [35] employs
+a global progress parameter for progressive frequency lift-
+ing, it homogenizes view-specific optimization characteris-
+tics. Our method introduces view-adaptive frequency gating
+through MaVOS-guided modulation that dynamically con-
+trols PE activation timing based on per-view optimizability.
+Following the BARF [35], we first define the base fre-
+quency activation thresholdβ 0 forLfrequency bases at
+training progressp∈[0,1]:
+β0 = [(p−p a)/(pb −p a)]·L, (8)
+where activation linearly progresses from 0 toLover the
+scheduled interval[p a, pb]. Our key innovation introduces
+a MaVOS-driven offset∆β i that adapts this schedule per
+view:
+∆βi =λ· eSi ·η f ·η t,
+witheSi =S i − ¯S, η (l)
+f =l/L, η t =p γt , (9)
+where ¯S= 1
+|V|
+P
+vj ∈V Sj is the meanS i across view set
+Vin the current optimization round, andλ >0scales the
+modulation magnitude. Instead of usingS i directly, we use
+eSi to measure the view’s relative optimizability,i.e., de-
+viation from the mean across the current view set to en-
+sure robustness to global MaVOS distribution shifts dur-
+ing progressive reconstruction.η f applies delays to high-
+frequency components, preserving low-frequency geomet-
+ric priors during early optimization.η t gradually increases
+modulation influence, accounting for initial pose instability
+and noisy MaVOS estimates in early training stages.
+The final frequency scheduling combines base compo-
+nent in Eq. 8 and offset component in Eq. 9 as:
+βf =β 0 + ∆β. (10)
+By introducingβ f from Eq. 10 into Eq. 3, our method de-
+lays high-frequency activation for high-scoring views, pre-
+venting details from destabilizing the early-stage pose esti-
+mation process.
+Anti-score loss weighting.While dynamic view schedul-
+ing and MaVOS-gated PE mitigate easy-view bias at the
+sampling and feature representation levels, they do not ex-
+plicitly address gradient imbalance caused by uniform loss
+weighting across views. To directly rebalance supervision
+signals at the optimization level, we further employ an anti-
+score loss weighting strategy where each view’s contribu-
+tion to the total loss is weighted by the inverse score trans-
+formationw i = 1−S i. Based on the anti-score weights,
+we jointly optimize parameters of camera poses and scene
+representation using the following loss function:
+L=
+NX
+i=1
+wi(λcLc+λ eLe+λ mLm+λ dLd+λ nLn), (11)
+whereλ ∗ are balancing hyperparameters. For each input
+viewv i, we sample a set ofmrays and discretize each ray
+intonpoints for supervision. The individual terms are de-
+fined as:
+•Photometric loss:L c =P ˆC(r)−C(r)
+2
+2, comparing
+rendered and ground-truth colors.
+•Eikonal loss[20]:L e = P (∥∇d(xk,i)∥2 −1) 2, regu-
+larizing the SDF gradient magnitude.
+•Mask loss:L m = BCE(M k, ˆOk), where ˆOk is the sum
+of weights along the camera rayk, andBCEdenotes bi-
+nary cross entropy.
+•Depth loss[68]:L d =P ˆD(r)−D∗(r)
+, withD ∗ being
+shifted and scaled depth [3, 46] and ˆDthe rendered depth
+via volume rendering.
+•Normal loss:L n =Pˆn(r)−n(r)
+, aligning predicted
+normals with OMNI-DATA estimates [14].
+4. Experiments
+4.1. Experimental Setup
+Dataset.To comprehensively validate the effectiveness
+of our method, we conduct experiments on the DTU
+dataset [1], which is widely used for evaluating 3D recon-
+struction methods. We chose the 9 scenes with a challeng-
+ing variety of geometry, materials, and appearance for the
+experiments. Each scene contains 49 or 64 images. The
+monocular depth and normal supervisions are provided by
+MonoSDF [68].
+Compared Methods.We compare our method against the
+following baselines: (1) NeuS-BARF, direct integration of
+265
+
+
+=== PAGE 6 ===
+Table 1. Quantitative comparisons of camera pose estimation. We report the rotation angle error△Rand the absolute translation error
+△Tto evaluate pose accuracy. The term “--” denotes failed reconstructions. “Avg.” indicates metrics averaged over all scenes, and the best
+results are highlighted in bold. NeuS-BARF and HT-3DGS cannot produce reliable poses, exhibiting large errors. SG-NeRF is initialized
+from noisy poses perturbed around ground-truth poses, yet these remain imperfect estimates. VGGT achieves competitive results on some
+scenes but fails on three. In contrast, our method significantly outperforms all state-of-the-art methods, demonstrating its effectiveness in
+accurate pose estimation from unposed image collections.
+Scan NeuS-BARF [55] SG-NeRF [8] HT-3DGS [25] VGGT [53] Ours
+△R↓ △T↓ △R↓ △T↓ △R↓ △T↓ △R↓ △T↓ △R↓ △T↓
+24 156.055 5.080 6.029 0.285 28.907 1.4170.5160.025 0.7950.022
+37 137.604 4.030 4.899 0.332 140.836 5.789 1.823 0.1070.823 0.031
+40 145.132 4.334 6.116 0.242 32.067 1.574 2.388 0.1160.788 0.033
+55 140.556 4.808 5.053 0.242 36.852 1.657 3.079 0.1270.302 0.010
+63 146.947 6.570 3.760 0.208 136.668 2.857-- --0.618 0.027
+65 117.193 5.609 4.171 0.250 70.577 3.373 3.030 0.1480.408 0.011
+69 115.203 4.063 3.791 0.177 38.384 1.715 2.961 0.1160.397 0.014
+83 59.778 2.852 3.209 0.183 152.972 5.502-- --0.898 0.037
+97 47.810 2.099 3.515 0.193 64.032 3.166-- --0.388 0.014
+Avg. 118.475 4.383 4.505 0.235 101.320 4.224 2.300 0.1060.602 0.022
+Figure 2. Qualitative comparisons of pose estimation. Our results closely match the ground-truth poses and exhibit fewer errors than the
+baseline methods.
+BARF [35] into the NeuS framework for joint optimiza-
+tion; (2) SG-NeRF [8], a neural implicit method from noisy
+pose initializations perturbed around ground-truth; (3) HT-
+3DGS [25], a pose-free joint optimization method based
+on 3D Gaussian Splatting; (4) VGGT [53], a data-driven
+Transformer-based reconstruction method.
+Implementation details.For the camera pose initializa-
+tion, we provide SG-NeRF [8] with noisy poses for the ini-
+tialization following their perturbation setting. The camera
+poses for all other methods are initialized as identity ma-
+266
+
+
+=== PAGE 7 ===
+Figure 3. Qualitative comparisons of reconstruction quality. For HT-3DGS and VGGT, we show the corresponding SDF surfaces extracted
+from the output point clouds via Poisson reconstruction in the left column. We further provide their original representations on the right
+for better comparisons,i.e., Gaussian primitives for HT-3DGS, and point clouds for VGGT. For other methods, we extract geometric
+meshes by marching cubes [37], with a resolution set to 512. One input image is shown in the last column for reference. Zoom-in
+views are given on the right of each column. NeuS-BARF and HT-3DGS produce severely distorted geometry due to inaccurate pose
+estimation. VGGT yields reasonable point clouds in some scenes. However, it suffers from failed reconstruction inScan63andScan97
+and produces incoherent surfaces. SG-NeRF reconstructs geometric artifacts and noise even with pose initialization close to the ground
+truth. In contrast, our method consistently delivers high reconstruction quality across diverse scenes, recovering fine geometric details on
+par with NeuS. Zoom in for details.
+trices. The camera intrinsics are assumed to be known and
+provided by the dataset. All models are trained on a single
+NVIDIA RTX 5090 GPU. We use two separate Adam opti-
+mizers [30] to optimize camera poses and scene representa-
+tion parameters. For pose estimation, we train our model
+50Ktimes per optimization round and randomly sample
+256rays per optimization step, with each ray consisting
+of128samples. After predicting all poses, we freeze the
+pose parameters and train the scene representation200K
+times. For the first-round estimation of anchor views, all
+base training loss weights in Eq. 11 are set to1.0. For the
+remaining optimization, except for the color loss, the other
+weights are reduced to0.1. The balancing hyperparameter
+in Eq. 6 is set to0.65.Kis set to cover30%of the to-
+tal views. The scheduled interval[p a, pb]is set to[0.3,0.7]
+for pose estimation, and[0.1,0.5]for geometry refinement.
+More details are provided in the supplementary material.
+Evaluation metrics.We compute the rotation angle error
+△Rand the absolute translation error△Tafter aligning the
+estimated poses with the ground truth using Procrustes anal-
+ysis on the camera locations [19], following BARF [35].
+The ground-truth poses are provided by the dataset. For 3D
+reconstruction, we use the Chamfer distance to measure the
+reconstruction quality.
+4.2. Comparisons with the State-of-the-art Methods
+We report quantitative results on camera pose accuracy in
+Table 1 and visualize them in Fig. 2. It can be observed
+that NeuS-BARF suffers catastrophic failure when poses di-
+verge, indicating that naive adoption of BARF within neu-
+ral implicit representations is ineffective. This highlights
+that SDF-based neural implicit methods face greater chal-
+lenges in pose estimation than novel view synthesis, mak-
+ing it highly sensitive to initial pose inaccuracies and prone
+to optimization collapse. SG-NeuS is designed for noisy
+pose reconstruction where inputs are close to the ground
+truth. Remarkably, our method, initialized to the identity,
+achieves lower errors, demonstrating superior performance
+in pose-free surface reconstruction. HT-3DGS exhibits rel-
+atively large pose errors, as with most 3DGS-based pose-
+free methods, because it relies on inter-frame cues and is
+thus constrained to video-stream scenes. Fundamentally,
+3DGS-based approaches require not only accurate poses
+but also a well-initialized point cloud, making them less
+suitable for more challenging pose-free settings. VGGT,
+a data-driven Transformer-based method, achieves compet-
+itive performance on some scenes but fails to reconstruct
+in three test cases. Especially in multi-scale scenes like
+Scan83, VGGT shows failed reconstruction results. In con-
+267
+
+
+=== PAGE 8 ===
+trast, our method outperforms state-of-the-art methods by a
+large margin across all scenes. This superior performance
+is further validated in Fig. 2, where the camera poses recov-
+ered by our method closely match the ground-truth poses,
+providing a reliable solution for camera pose estimation.
+We further present comparative results of reconstruc-
+tion quality. As shown in Fig. 3, NeuS-BARF and HT-
+3DGS completely fail, producing distorted or fragmented
+geometry due to diverging into inaccurate camera poses.
+VGGT, though achieving low pose errors, represents scenes
+as point clouds, which are unsuitable for generating smooth
+SDF surfaces and yield incomplete geometry. SG-NeRF
+yields reasonable reconstructions but produces noisy geom-
+etry, such as inScan37andScan63. Our method consis-
+tently outperforms all others, achieving faithful and com-
+plete surface reconstruction. Notably, our method recov-
+ers finer geometric details on challenging structures, such
+as thin structures inScan37andScan65, and reflective sur-
+faces inScan63,Scan69, andScan97, than NeuS trained
+with COLMAP-estimated camera poses. This superiority is
+attributed to the accuracy of camera pose estimation, which
+enables high-quality scene reconstruction. We also evalu-
+ate the scene reconstruction performance using the Cham-
+fer distance. As shown in Table 2, our method achieves
+superior or competitive results compared to state-of-the-art
+methods such as VGGT and NeuS. Overall, our method can
+effectively optimize camera poses and recover scene geom-
+etry from unposed views.
+Table 2. Quantitative comparisons of scene reconstruction in
+Chamfer distance. Due to the poor performance of NeuS-BARF
+and HT-3DGS, we only report the comparative results with SG-
+NeRF, VGGT, and NeuS (trained with COLMAP poses).
+Method 24 37 40 55 63 65 69 83 97 Avg.
+SG-NeRF [8] 0.605 0.630 0.519 0.521 0.537 0.508 0.703 0.717 0.567 0.590VGGT [53] 0.317 0.395 0.487 0.498 – 0.424 0.331 – – 0.409Ours 0.342 0.372 0.415 0.337 0.554 0.470 0.356 0.398 0.387 0.404NeuS [55] 0.377 0.353 0.325 0.309 0.556 0.442 0.293 0.325 0.330 0.368
+4.3. Ablation Studies
+We conduct ablation studies to validate the effectiveness
+of each component in our method. All experiments are
+performed on theScan24. As shown in Table 3, BARF
+exhibits large drift under unknown poses due to the easy-
+view bias and thus has the highest error. Adding MaVOS-
+based view scheduling yields a significant improvement be-
+cause anchors provide reliable early constraints and help
+suppress bias, leading to stable convergence. MaVOS-gated
+PE delays high-frequency activation for low-optimizability
+views and further reduces pose oscillation caused by prema-
+ture details. Replacing base loss weighting with anti-score
+weighting prevents error propagation and improves robust-
+ness by redistributing gradients. Finally, enabling mani-
+folds within MaVOS consistently yields more accurate pose
+Table 3. Ablation of key components on pose estimation. “BARF”
+is the base model that naively integrates BARF into the NeuS
+framework for joint optimization. “View sched.” incorporates the
+MaVOS-based view scheduling strategy into “BARF” to validate
+progressive optimization. “Freq. gate” examines positional encod-
+ing by enabling/disabling MaVOS-gated frequency modulation.
+“Anti-score” compares the loss weighting scheme by contrasting
+anti-score weighting against the base weighting. ‘Manifolds” eval-
+uates the manifold-coverage term in MaVOS to assess its contri-
+bution to view optimizability calculation. “Dyn. refine.” assesses
+the dynamic refinement on the view scheduling. We use the ro-
+tation angle error△Rand the absolute translation error△Tfor
+pose estimation.
+BARF View
+sched.
+Freq.
+gate
+Anti-
+score
+Mani-
+folds
+Dyn.
+refine. △R↓ △T↓
+✓ ✗ ✗ ✗ ✗ ✗168.05 2.71
+✓ ✓ ✗ ✗ ✗ ✗36.02 1.78
+✓ ✓ ✓ ✗ ✓ ✓2.09 0.09
+✓ ✓ ✗ ✓ ✓ ✓1.80 0.07
+✓ ✓ ✓ ✓ ✗ ✓1.38 0.06
+✓ ✓ ✓ ✓ ✓ ✗4.07 0.14
+✓ ✓ ✓ ✓ ✓ ✓0.80 0.02
+estimates with a more reasonable view optimizability eval-
+uation. Besides, dynamically reordering successors contin-
+uously maintains uniform coverage and connectivity. Taken
+together, these components contribute synergistically, deliv-
+ering robust pose recovery and high-fidelity reconstruction.
+More experimental results, detailed analyses, and abla-
+tion studies are detailed in the supplementary material.
+5. Conclusion
+We present ManifoldNeuS, a novel method for joint camera
+pose and geometry optimization from unposed images. By
+discovering and addressing the cause of pose drift and ge-
+ometric distortion,i.e., the easy-view-bias in uniform view
+optimization, we introduce the manifold-aware view opti-
+mizability score (MaVOS). This metric uniquely balances
+local constraint strength and global topological coverage to
+quantify how effectively each view advances optimization.
+Building on MaVOS, our reconstruction pipeline integrates
+three synergistic components, including view scheduling,
+positional encoding, and loss weighting. Our experiments
+show that ManifoldNeuS achieves state-of-the-art perfor-
+mance in both pose estimation and geometry reconstruction.
+We believe that our method encourages further development
+of pose-free neural surface reconstruction in the future by
+introducing view optimizability.
+Acknowledgements.This work was supported by the Na-
+tional Key Research and Development Program of China
+[2024YFB2809002] and NSFC under Grant 62571449.
+268
+
+
+=== PAGE 9 ===
+References
+[1] Henrik Aanæs, Rasmus Ramsbøl Jensen, George V ogiatzis,
+Engin Tola, and Anders Bjorholm Dahl. Large-scale data for
+multiple-view stereopsis.International Journal of Computer
+Vision, 120(2):153–168, 2016. 5
+[2] Jia-Wang Bian, Wenjing Bian, Victor Adrian Prisacariu, and
+Philip Torr. PoRF: Pose residual field for accurate neural sur-
+face reconstruction. InInternational Conference on Learn-
+ing Representations, 2024. 1, 2
+[3] Wenjing Bian, Zirui Wang, Kejie Li, Jia-Wang Bian, and
+Victor Adrian Prisacariu. NoPe-NeRF: Optimising neu-
+ral radiance field with no pose prior. InProceedings of
+the IEEE/CVF Conference on Computer Vision and Pattern
+Recognition (CVPR), pages 4160–4169, 2023. 2, 5
+[4] Danpeng Chen, Hai Li, Weicai Ye, Yifan Wang, Weijian
+Xie, Shangjin Zhai, Nan Wang, Haomin Liu, Hujun Bao,
+and Guofeng Zhang. PGSR: Planar-based gaussian splatting
+for efficient and high-fidelity surface reconstruction.IEEE
+Transactions on Visualization and Computer Graphics, 31
+(9):6100–6111, 2024. 2
+[5] Shu Chen, Yang Zhang, Yaxin Xu, and Beiji Zou. SaNeRF:
+Structure-aware neural radiance fields without posed camera.
+Pattern Recognition, 151:110419, 2024. 2
+[6] Xingyu Chen, Yue Chen, Yuliang Xiu, Andreas Geiger, and
+Anpei Chen. TTT3R: 3D reconstruction as test-time training.
+arXiv preprint arXiv:2509.26645, 2025. 1, 2
+[7] Yue Chen, Xingyu Chen, Xuan Wang, Qi Zhang, Yu Guo,
+Ying Shan, and Fei Wang. Local-to-global registration for
+bundle-adjusting neural radiance fields. InProceedings of
+the IEEE/CVF Conference on Computer Vision and Pattern
+Recognition (CVPR), pages 8264–8273, 2023. 2
+[8] Yiyang Chen, Siyan Dong, Xulong Wang, Lulu Cai, Youyi
+Zheng, and Yanchao Yang. SG-NeRF: Neural surface re-
+construction with scene graph optimization. InEuropean
+Conference on Computer Vision (ECCV), pages 188–205.
+Springer, 2024. 6, 8
+[9] Yu Chen, Rolandos Alexandros Potamias, Evangelos
+Ververas, Jifei Song, Jiankang Deng, and Gim Hee Lee. Ze-
+roGS: Training 3D gaussian splatting from unposed images.
+arXiv preprint arXiv:2411.15779, 2024. 2
+[10] Bo-Yu Cheng, Wei-Chen Chiu, and Yu-Lun Liu. Improv-
+ing robustness for joint optimization of camera poses and
+decomposed low-rank tensorial radiance fields. InProceed-
+ings of the AAAI conference on artificial intelligence, pages
+990–1000, 2024. 2
+[11] Chong Cheng, Yu Hu, Sicheng Yu, Beizhen Zhao, Zijian
+Wang, and Hao Wang. RegGS: Unposed sparse views gaus-
+sian splatting with 3DGS registration. InProceedings of
+the IEEE/CVF International Conference on Computer Vision
+(ICCV), pages 8100–8109, 2025. 2
+[12] Shin-Fang Chng, Sameera Ramasinghe, Jamie Sherrah, and
+Simon Lucey. Gaussian activated neural radiance fields for
+high fidelity reconstruction and pose estimation. InEuro-
+pean Conference on Computer Vision (ECCV), pages 264–
+280, 2022. 2
+[13] Pinxuan Dai, Jiamin Xu, Wenxiang Xie, Xinguo Liu,
+Huamin Wang, and Weiwei Xu. High-quality surface recon-
+struction using gaussian surfels. InACM SIGGRAPH 2024
+conference papers, pages 1–11, 2024. 2
+[14] Ainaz Eftekhar, Alexander Sax, Jitendra Malik, and Amir
+Zamir. Omnidata: A scalable pipeline for making multi-task
+mid-level vision datasets from 3d scans. InProceedings of
+the IEEE/CVF International Conference on Computer Vision
+(ICCV), pages 10786–10796, 2021. 5
+[15] Zhiwen Fan, Wenyan Cong, Kairun Wen, Kevin Wang,
+Jian Zhang, Xinghao Ding, Danfei Xu, Boris Ivanovic,
+Marco Pavone, Georgios Pavlakos, Zhangyang Wang, and
+Yue Wang. InstantSplat: Unbounded sparse-view pose-
+free gaussian splatting in 40 seconds.arXiv preprint
+arXiv:2403.20309, 2024. 2
+[16] Hongyu Fu, Xin Yu, Lincheng Li, and Li Zhang. CBARF:
+Cascaded bundle-adjusting neural radiance fields from im-
+perfect camera poses.IEEE Transactions on Multimedia,
+26:9304–9315, 2024. 2
+[17] Qiancheng Fu, Qingshan Xu, Yew Soon Ong, and Wen-
+bing Tao. Geo-NeuS: Geometry-consistent neural implicit
+surfaces learning for multi-view reconstruction.Advances
+in Neural Information Processing Systems, 35:3403–3416,
+2022. 1, 2
+[18] Yang Fu, Xiaolong Wang, Sifei Liu, Amey Kulkarni, Jan
+Kautz, and Alexei A. Efros. COLMAP-free 3D gaussian
+splatting. InProceedings of the IEEE/CVF Conference on
+Computer Vision and Pattern Recognition (CVPR), pages
+20796–20805, 2024. 1, 2
+[19] Colin Goodall. Procrustes methods in the statistical analysis
+of shape.Journal of the Royal Statistical Society: Series B
+(Methodological), 53(2):285–321, 1991. 7
+[20] Amos Gropp, Lior Yariv, Niv Haim, Matan Atzmon, and
+Yaron Lipman. Implicit geometric regularization for learn-
+ing shapes. InProceedings of the International Conference
+on Machine Learning (ICML), pages 3789–3799, 2020. 5
+[21] Antoine Gu ´edon and Vincent Lepetit. SuGaR: Surface-
+aligned gaussian splatting for efficient 3D mesh reconstruc-
+tion and high-quality mesh rendering. InProceedings of
+the IEEE/CVF Conference on Computer Vision and Pattern
+Recognition (CVPR), pages 5354–5363, 2024. 2
+[22] Binbin Huang, Zehao Yu, Anpei Chen, Andreas Geiger, and
+Shenghua Gao. 2D gaussian splatting for geometrically ac-
+curate radiance fields. InACM SIGGRAPH 2024 conference
+papers, pages 1–11, 2024. 1, 2
+[23] Shi-Sheng Huang, Zixin Zou, Yichi Zhang, Yan-Pei Cao,
+and Ying Shan. SC-NeuS: Consistent neural surface recon-
+struction from sparse and noisy views. InProceedings of the
+AAAI conference on artificial intelligence, pages 2357–2365,
+2024. 1, 2
+[24] Nishant Jain, Suryansh Kumar, and Luc Van Gool. Learning
+robust multi-scale representation for neural radiance fields
+from unposed images.International Journal of Computer
+Vision, 132(4):1310–1335, 2024. 2
+[25] Bo Ji and Angela Yao. SfM-free 3D gaussian splatting via
+hierarchical training. InProceedings of the Computer Vision
+and Pattern Recognition Conference (CVPR), pages 21654–
+21663, 2025. 2, 6
+269
+
+
+=== PAGE 10 ===
+[26] Kaiwen Jiang, Yang Fu, Mukund Varma T, Yash Belhe, Xi-
+aolong Wang, Hao Su, and Ravi Ramamoorthi. A construct-
+optimize approach to sparse view synthesis without camera
+pose. InACM SIGGRAPH 2024 Conference Papers, pages
+1–11, 2024. 2
+[27] James T Kajiya and Brian P V on Herzen. Ray tracing volume
+densities.ACM SIGGRAPH Computer graphics, 18(3):165–
+174, 1984. 3
+[28] Gyeongjin Kang, Jisang Yoo, Jihyeon Park, Seungtae Nam,
+Hyeonsoo Im, Sangheon Shin, Sangpil Kim, and Eunbyung
+Park. SelfSplat: Pose-free and 3D prior-free generalizable
+3D gaussian splatting. InProceedings of the Computer
+Vision and Pattern Recognition Conference (CVPR), pages
+22012–22022, 2025. 2
+[29] Bernhard Kerbl, Georgios Kopanas, Thomas Leimk ¨uhler,
+and George Drettakis. 3D gaussian splatting for real-time
+radiance field rendering.ACM Transactions on Graphics
+(ToG), 42(4):139–1, 2023. 1, 2
+[30] Diederik P Kingma and Jimmy Ba. ADAM: A method
+for stochastic optimization. InInternational Conference on
+Learning Representations, 2015. 7
+[31] Vincent Leroy, Yohann Cabon, and J´erˆome Revaud. Ground-
+ing image matching in 3D with MASt3R. InEuropean Con-
+ference on Computer Vision (ECCV), pages 71–91. Springer,
+2024. 2
+[32] Hao Li, Yuanyuan Gao, Dingwen Zhang, Chenming Wu,
+Yalun Dai, Chen Zhao, Haocheng Feng, Errui Ding, Jing-
+dong Wang, and Junwei Han. GGRt: Towards generalizable
+3D gaussians without pose priors in real-time. InEuropean
+Conference on Computer Vision (ECCV), page 325–341,
+2024. 2
+[33] Wenyu Li, Zongxin Ye, Sidun Liu, Ziteng Zhang, Xi Wang,
+Peng Qiao, and Yong Dou. ParaSurRe: Parallel surface re-
+construction with no pose prior. In2024 IEEE International
+Conference on Multimedia and Expo (ICME), pages 1–6.
+IEEE, 2024. 1, 2
+[34] Zhaoshuo Li, Thomas M ¨uller, Alex Evans, Russell H Tay-
+lor, Mathias Unberath, Ming-Yu Liu, and Chen-Hsuan Lin.
+NeuraLangelo: High-fidelity neural surface reconstruction.
+InProceedings of the IEEE/CVF Conference on Computer
+Vision and Pattern Recognition (CVPR), pages 8456–8465,
+2023. 1, 2
+[35] Chen-Hsuan Lin, Wei-Chiu Ma, Antonio Torralba, and Si-
+mon Lucey. BARF: Bundle-adjusting neural radiance fields.
+InProceedings of the IEEE/CVF International Conference
+on Computer Vision (ICCV), pages 5741–5751, 2021. 2, 3,
+5, 6, 7
+[36] Xiaoxiao Long, Cheng Lin, Peng Wang, Taku Komura, and
+Wenping Wang. SparseNeuS: Fast generalizable neural sur-
+face reconstruction from sparse views. InEuropean Confer-
+ence on Computer Vision (ECCV), pages 210–227. Springer,
+2022. 2
+[37] William E. Lorensen and Harvey E. Cline. Marching cubes:
+A high resolution 3D surface construction algorithm.ACM
+SIGGRAPH Computer graphics, pages 163–169, 1987. 2, 7
+[38] Xiaoyang Lyu, Yang-Tian Sun, Yi-Hua Huang, Xiuzhe Wu,
+Ziyi Yang, Yilun Chen, Jiangmiao Pang, and Xiaojuan Qi.
+3DGSR: Implicit surface reconstruction with 3D gaussian
+splatting.ACM Transactions on Graphics (ToG), 43(6):1–
+12, 2024. 2
+[39] Octave Mariotti, Oisin Mac Aodha, and Hakan Bilen.
+ViewNeRF: Unsupervised viewpoint estimation using
+category-level neural radiance fields. InBritish Machine Vi-
+sion Conference (BMVC), 2022. 2
+[40] Quan Meng, Anpei Chen, Haimin Luo, Minye Wu, Hao Su,
+Lan Xu, Xuming He, and Jingyi Yu. GNeRF: GAN-based
+neural radiance field without posed camera. InProceedings
+of the IEEE/CVF International Conference on Computer Vi-
+sion (ICCV), pages 6331–6341, 2021. 2
+[41] Andreas Meuleman, Yu-Lun Liu, Chen Gao, Jia-Bin Huang,
+Changil Kim, Min H Kim, and Johannes Kopf. Progressively
+optimized local radiance fields for robust view synthesis. In
+Proceedings of the IEEE/CVF Conference on Computer Vi-
+sion and Pattern Recognition (CVPR), pages 16539–16548,
+2023. 2
+[42] Ben Mildenhall, Pratul P Srinivasan, Matthew Tancik,
+Jonathan T Barron, Ravi Ramamoorthi, and Ren Ng. NeRF:
+Representing scenes as neural radiance fields for view
+synthesis. InEuropean Conference on Computer Vision
+(ECCV), pages 405–421, 2020. 1, 2
+[43] Michael Oechsle, Songyou Peng, and Andreas Geiger.
+UNISURF: Unifying neural implicit surfaces and radiance
+fields for multi-view reconstruction. InProceedings of the
+IEEE/CVF International Conference on Computer Vision
+(ICCV), pages 5589–5599, 2021. 2
+[44] Keunhong Park, Philipp Henzler, Ben Mildenhall,
+Jonathan T Barron, and Ricardo Martin-Brualla. CamP:
+Camera preconditioning for neural radiance fields.ACM
+Transactions on Graphics (ToG), 42(6):1–11, 2023. 2
+[45] Yunlong Ran, Yanxu Li, Qi Ye, Yuchi Huo, Zhaopeng Cui,
+Zechun Bai, Jiahao Sun, and Jiming Chen. CT-NeRF: In-
+cremental optimization of neural radiance field and cam-
+era poses with complex trajectory.IEEE Transactions on
+Circuits and Systems for Video Technology, 35(10):10110–
+10121, 2025. 2
+[46] Ren ´e Ranftl, Alexey Bochkovskiy, and Vladlen Koltun. Vi-
+sion transformers for dense prediction. InProceedings of
+the IEEE/CVF International Conference on Computer Vision
+(ICCV), pages 12179–12188, 2021. 5
+[47] Yufan Ren, Fangjinhua Wang, Tong Zhang, Marc Polle-
+feys, and Sabine S ¨usstrunk. V olRecon: V olume rendering
+of signed ray distance functions for generalizable multi-view
+reconstruction. InProceedings of the IEEE/CVF Conference
+on Computer Vision and Pattern Recognition (CVPR), pages
+16685–16695, 2023. 2
+[48] Mohamed Shawky Sabae, Hoda Anis Baraka, and
+Mayada Mansour Hadhoud. NoPose-NeuS: Jointly optimiz-
+ing camera poses with neural implicit surfaces for multi-view
+reconstruction.arXiv preprint arXiv:2312.15238, 2023. 1, 2
+[49] Johannes L Schonberger and Jan-Michael Frahm. Structure-
+from-motion revisited. InProceedings of the IEEE/CVF
+Conference on Computer Vision and Pattern Recognition
+(CVPR), pages 4104–4113, 2016. 1, 3
+[50] You Shen, Zhipeng Zhang, Yansong Qu, and Liujuan Cao.
+270
+
+
+=== PAGE 11 ===
+FastVGGT: Training-free acceleration of visual geometry
+transformer.arXiv preprint arXiv:2509.02560, 2025. 2
+[51] Matthew Tancik, Pratul Srinivasan, Ben Mildenhall, Sara
+Fridovich-Keil, Nithin Raghavan, Utkarsh Singhal, Ravi Ra-
+mamoorthi, Jonathan Barron, and Ren Ng. Fourier features
+let networks learn high frequency functions in low dimen-
+sional domains.Advances in Neural Information Processing
+Systems, 33:7537–7547, 2020. 3
+[52] Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszko-
+reit, Llion Jones, Aidan N Gomez, Łukasz Kaiser, and Illia
+Polosukhin. Attention is all you need.Advances in neural
+information processing systems, 30, 2017. 3
+[53] Jianyuan Wang, Minghao Chen, Nikita Karaev, Andrea
+Vedaldi, Christian Rupprecht, and David Novotny. VGGT:
+Visual geometry grounded transformer. InProceedings of
+the Computer Vision and Pattern Recognition Conference
+(CVPR), pages 5294–5306, 2025. 2, 6, 8
+[54] Kun Wang, Zhiqiang Yan, Huang Tian, Zhenyu Zhang, Xi-
+ang Li, Jun Li, and Jian Yang. AltNeRF: Learning robust
+neural radiance field via alternating depth-pose optimization.
+InProceedings of the AAAI conference on artificial intelli-
+gence, pages 5508–5516, 2024. 2
+[55] Peng Wang, Lingjie Liu, Yuan Liu, Christian Theobalt, Taku
+Komura, and Wenping Wang. NeuS: learning neural implicit
+surfaces by volume rendering for multi-view reconstruction.
+Advances in Neural Information Processing Systems, pages
+27171–27183, 2021. 2, 3, 6, 8
+[56] Qianqian Wang, Yifei Zhang, Aleksander Holynski,
+Alexei A Efros, and Angjoo Kanazawa. Continuous 3D
+perception model with persistent state. InProceedings of
+the Computer Vision and Pattern Recognition Conference
+(CVPR), pages 10510–10522, 2025. 2
+[57] Shuzhe Wang, Vincent Leroy, Yohann Cabon, Boris
+Chidlovskii, and Jerome Revaud. Dust3R: Geometric 3D
+vision made easy. InProceedings of the IEEE/CVF Confer-
+ence on Computer Vision and Pattern Recognition (CVPR),
+pages 20697–20709, 2024. 2
+[58] Weiyao Wang, Pierre Gleize, Hao Tang, Xingyu Chen,
+Kevin J Liang, and Matt Feiszli. ICON: Incremental CONfi-
+dence for joint pose and radiance field optimization. InPro-
+ceedings of the IEEE/CVF Conference on Computer Vision
+and Pattern Recognition (CVPR), pages 5406–5417, 2024. 2
+[59] Yiming Wang, Qin Han, Marc Habermann, Kostas Dani-
+ilidis, Christian Theobalt, and Lingjie Liu. NeuS2: Fast
+learning of neural implicit surfaces for multi-view recon-
+struction. InProceedings of the IEEE/CVF International
+Conference on Computer Vision (ICCV), pages 3295–3306,
+2023. 2
+[60] Zirui Wang, Shangzhe Wu, Weidi Xie, Min Chen, and
+Victor Adrian Prisacariu. NeRF−−: Neural radiance
+fields without known camera parameters.arXiv preprint
+arXiv:2102.07064, 2021. 2
+[61] Yu Wei, Jiahui Zhang, Xiaoqin Zhang, Ling Shao, and Shi-
+jian Lu. PCR-GS: Colmap-free 3D gaussian splatting via
+pose co-regularizations. InProceedings of the IEEE/CVF
+International Conference on Computer Vision (ICCV), pages
+26499–26508, 2025. 2
+[62] Xiuchao Wu, Jiamin Xu, Xin Zhang, Hujun Bao, Qix-
+ing Huang, Yujun Shen, James Tompkin, and Weiwei Xu.
+ScaNeRF: Scalable bundle-adjusting neural radiance fields
+for large-scale scene rendering.ACM Transactions on
+Graphics (ToG), 42(6):1–18, 2023. 2
+[63] Yitong Xia, Hao Tang, Radu Timofte, and Luc Van Gool.
+SiNeRF: Sinusoidal neural radiance fields for joint pose esti-
+mation and scene reconstruction. InBritish Machine Vision
+Conference (BMVC), 2022. 2
+[64] Qingsong Yan, Qiang Wang, Kaiyong Zhao, Jie Chen, Bo Li,
+Xiaowen Chu, and Fei Deng. CF-NeRF: Camera parameter
+free neural radiance fields with incremental learning. InPro-
+ceedings of the AAAI conference on artificial intelligence,
+pages 6440–6448, 2024. 2
+[65] Lior Yariv, Jiatao Gu, Yoni Kasten, and Yaron Lipman. V ol-
+ume rendering of neural implicit surfaces.Advances in neu-
+ral information processing systems, 34:4805–4815, 2021. 2
+[66] Hanyang Yu, Xiaoxiao Long, and Ping Tan. LM-Gaussian:
+Boost sparse-view 3D gaussian splatting with large model
+priors.arXiv preprint arXiv:2409.03456, 2024. 2
+[67] Mulin Yu, Tao Lu, Linning Xu, Lihan Jiang, Yuanbo Xiangli,
+and Bo Dai. GSDF: 3DGS meets SDF for improved neural
+rendering and reconstruction.Advances in Neural Informa-
+tion Processing Systems, 37:129507–129530, 2024. 2
+[68] Zehao Yu, Songyou Peng, Michael Niemeyer, Torsten Sat-
+tler, and Andreas Geiger. MonoSDF: Exploring monocu-
+lar geometric cues for neural implicit surface reconstruc-
+tion.Advances in neural information processing systems,
+35:25018–25032, 2022. 2, 5
+[69] Zehao Yu, Torsten Sattler, and Andreas Geiger. Gaussian
+opacity fields: Efficient adaptive surface reconstruction in
+unbounded scenes.ACM Transactions on Graphics (ToG),
+43(6):1–13, 2024. 1, 2
+[70] Jiahui Zhang, Fangneng Zhan, Rongliang Wu, Yingchen Yu,
+Wenqing Zhang, Bai Song, Xiaoqin Zhang, and Shijian Lu.
+VMRF: View matching neural radiance fields. InProceed-
+ings of the ACM International Conference on Multimedia
+(ACM MM), pages 6579–6587, 2022. 2
+[71] Jiahui Zhang, Fangneng Zhan, Yingchen Yu, Kunhao Liu,
+Rongliang Wu, Xiaoqin Zhang, Ling Shao, and Shijian Lu.
+Pose-free neural radiance fields via implicit pose regulariza-
+tion. InProceedings of the IEEE/CVF International Confer-
+ence on Computer Vision (ICCV), pages 3534–3543, 2023.
+2
+[72] Letian Zhang, Ming Li, Chen Chen, and Jie Xu. IL-NeRF:
+Incremental learning for neural radiance fields with cam-
+era pose alignment. InProceedings of the Computer Vision
+and Pattern Recognition Conference (CVPR), pages 358–
+368, 2025. 2
+271

@@ -1,0 +1,14 @@
+[
+ {"name":"inhand.pdf","url":"https://arxiv.org/pdf/2211.16193"},
+ {"name":"objectcarver.pdf","url":"https://arxiv.org/pdf/2407.19108"},
+ {"name":"neus2.pdf","url":"https://arxiv.org/pdf/2212.05231"},
+ {"name":"milo.pdf","url":"https://arxiv.org/pdf/2506.24096"},
+ {"name":"sparseflex.pdf","url":"https://arxiv.org/pdf/2503.21732"},
+ {"name":"neat.pdf","url":"https://arxiv.org/pdf/2303.12012"},
+ {"name":"gpu_sdf.pdf","url":"https://arxiv.org/pdf/2602.23926"},
+ {"name":"hold.pdf","url":"https://openaccess.thecvf.com/content/CVPR2024/papers/Fan_HOLD_Category-agnostic_3D_Reconstruction_of_Interacting_Hands_and_Objects_from_CVPR_2024_paper.pdf"},
+ {"name":"porf.pdf","url":"https://arxiv.org/pdf/2310.07449"},
+ {"name":"posefusion_project.html","url":"https://raining00.github.io/PoseFusion-page/"},
+ {"name":"exmesh_project.html","url":"https://fan-treasure.github.io/ExMesh_page.github.io/"},
+ {"name":"exmesh.pdf","url":"https://openaccess.thecvf.com/content/CVPR2026/papers/Fan_ExMesh_EXplicit_Mesh_Reconstruction_with_Topology_Adaptation_CVPR_2026_paper.pdf"}
+]

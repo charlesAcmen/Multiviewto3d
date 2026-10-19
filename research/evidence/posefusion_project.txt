@@ -1,0 +1,1117 @@
+
+
+
+
+
+
+
+
+
+
+
+PoseFusion: Fusing neural implicit surfaces for multi-view reconstruction from multi-pose captures
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+    
+
+      PoseFusion: Fusing neural implicit surfaces for
+
+      multi-view reconstruction from multi-pose captures
+    
+
+
+    
+
+    
+
+      
+
+Guanli Hou
+
+a
+
+
+      
+
+Yuanmu Xu
+
+b
+
+
+      
+
+Tenglong Ren
+
+a
+
+
+      
+
+Jiangbei Hu
+
+c
+
+
+      
+
+Fei Hou
+
+d e
+
+
+      
+
+Peng Song
+
+f
+
+
+      
+
+Ying He
+
+a*
+
+
+    
+
+
+    
+
+    
+
+      
+
+a
+Nanyang Technological University, Singapore, Singapore
+
+      
+
+b
+University of Science and Technology Beijing, Beijing, China
+
+      
+
+c
+Dalian University of Technology, Dalian, China 
+
+      
+
+d
+Key Laboratory of System Software (CAS), Institute of Software, Chinese Academy of Sciences, Beijing, China
+
+      
+
+e
+University of Chinese Academy of Sciences, Beijing, China    
+
+      
+
+f
+Singapore University of Technology and Design, Singapore, Singapore
+
+      
+
+*
+Corresponding author
+
+    
+
+
+    
+
+    
+
+      
+
+        
+
+
+Paper
+
+      
+
+      
+
+        
+
+
+Project Page
+
+      
+
+      
+
+        
+
+
+Code
+
+      
+
+      
+
+        
+
+
+Dataset
+
+      
+
+    
+
+    
+
+      Direct downloads:
+      
+Code ZIP
+ ·
+      
+Dataset ZIP 1
+ ·
+      
+Dataset ZIP 2
+.
+      Extract all three ZIPs into the same folder.
+    
+
+  
+
+
+
+
+
+
+
+
+  
+
+    
+
+      
+ images/teaser.png -->
+      
+
+      
+images/teaser.png
+
+      
+
+        Given multi-view images captured under multiple object poses, PoseFusion
+        automatically registers and fuses the geometry and appearance learned
+        from each pose into a unified neural implicit surface. The resulting
+        representation supports both mesh extraction and novel-view rendering,
+        recovering geometry in regions that are poorly observed from any single
+        pose.
+      
+
+    
+
+  
+
+
+
+
+
+
+
+
+  
+
+    
+Abstract
+
+    
+
+      Recent advances in multi-view 3D reconstruction, especially neural
+      implicit surface methods, can recover high-quality geometry by
+      representing shape with signed distance functions (SDFs). However,
+      reconstructing complex objects with severe self-occlusion remains
+      difficult when all images are captured under a single object pose,
+      because the observed views often provide incomplete spatial coverage.
+      We propose 
+PoseFusion
+, a multi-pose reconstruction framework
+      that fuses neural implicit surfaces independently learned from different
+      object poses into a unified 3D representation. PoseFusion follows a
+      two-stage registration-and-fusion pipeline. First, we extract an oriented
+      bounding box (OBB) from the mesh derived from each pose-specific SDF and
+      use the OBBs, SDF samples, and multi-view image features to estimate a
+      coarse inter-pose alignment. Second, we refine the alignment using
+      image- and SDF-guided correspondences: cross-pose image matches are
+      lifted to 3D using the learned SDFs and used to iteratively optimize the
+      relative transformations. To facilitate evaluation, we construct a
+      dataset of synthetic and real-world objects with complex geometry and
+      strong self-occlusion, captured across multiple poses with calibrated
+      multi-view images. Experiments show that PoseFusion is robust under
+      challenging capture conditions and consistently produces high-fidelity
+      reconstructions from multi-pose, multi-view inputs.
+    
+
+  
+
+
+
+
+
+
+
+
+  
+
+    
+Video Overview
+
+    
+
+      The video gives a quick overview of the multi-pose capture setting and
+      shows how PoseFusion aligns pose-wise reconstructions into one fused
+      neural implicit surface.
+    
+
+
+    
+
+      
+
+        
+
+        
+
+      
+
+      
+
+        PoseFusion registers reconstructions from different object poses and
+        combines their complementary observations into a more complete result.
+      
+
+    
+
+  
+
+
+
+
+
+
+
+
+  
+
+    
+Pipeline
+
+    
+
+      PoseFusion is a 
+two-stage registration-and-fusion
+
+      pipeline:
+    
+
+    
+
+      
+
+Per-pose reconstruction.
+ Each pose is reconstructed independently with a neural implicit surface.
+
+      
+
+Coarse registration.
+ Oriented bounding boxes (OBBs) extracted from per-pose meshes provide candidate alignments, scored by SDF samples and ResNet-18 image features.
+
+      
+
+Fine registration.
+ Cross-pose 2D correspondences from eLoFTR are lifted onto the zero-level set of the learned SDFs and used to refine the rigid transformation.
+
+      
+
+Fusion.
+ Camera extrinsics from all poses are unified, and a single neural implicit surface is jointly retrained on the merged multi-view set.
+
+    
+
+
+    
+
+      
+ images/pipeline.png -->
+      
+
+      
+images/pipeline.png
+
+      
+
+        Overview of the PoseFusion pipeline. (a) Input multi-view images from
+        different poses. (b) Per-pose reconstructions using neural implicit
+        surfaces. (c) Coarse alignment using oriented bounding boxes. (d) Fine
+        alignment guided by image correspondences and SDF constraints.
+        (e) Final fusion produces a complete 3D reconstruction with enhanced
+        geometric details.
+      
+
+    
+
+  
+
+
+
+
+
+
+
+
+  
+
+    
+Method
+
+
+    
+Coarse registration
+
+    
+
+      Without loss of generality, we set the first pose as the target
+      
+P
+t
+
+ and align each remaining pose 
+P
+s
+
+
+      pairwise to it. After extracting per-pose meshes from the learned SDFs,
+      we apply PCA to obtain oriented bounding boxes
+      
+O
+s
+
+, 
+O
+t
+
+. The 24 candidate vertex
+      correspondences between the OBBs define 24 rigid candidates
+      
+τ
+1…24
+
+. We score each candidate with a combined
+      geometric–visual loss:
+    
+
+
+    
+
+      L
+coarse
+ =
+      (λ
+sdf
+ / N
+o
+) · Σᵢ ‖S
+t
+
+(i)
+ − S
+s
+
+(i)
+‖
+      + λ
+img
+ · ( 1 − cos( φ(I
+t
+), φ(I
+s
+) ) )
+    
+
+
+    
+
+      where φ(·) is the third residual block (conv3) of a ResNet-18 feature
+      extractor. We empirically set
+      λ
+sdf
+ = λ
+img
+ = 0.5 and sample
+      N
+o
+ = 100,000 points on the OBB surfaces.
+    
+
+
+    
+
+      
+ images/sdf_image_diff.png -->
+      
+
+      
+images/sdf_image_diff.png
+
+      
+
+        SDF- and image-feature-augmented OBB alignment. (a) Random points
+        sampled on a unit cube are mapped to the OBBs of the source and target
+        poses; their SDF values yield the geometric term. (b) Image features
+        I
+s
+, I
+t
+ are extracted from the third residual
+        block of ResNet-18 and used in the visual term.
+      
+
+    
+
+
+    
+Fine registration
+
+    
+
+      The coarse transform 
+τ*
+ initializes the fine stage. We pick
+      cross-pose image pairs whose camera extrinsics are close after applying
+      
+τ*
+:
+    
+
+
+    
+
+      trace( E
+1
+ · E′
+2
+
+−1
+ ) < ε,
+          E′
+2
+ = τ* · E
+2
+
+    
+
+
+    
+
+      eLoFTR matches the selected pairs in 2D; matched pixels are lifted to 3D
+      by tracing camera rays and snapping to the zero-level sets of the
+      learned SDFs. We then optimize the rigid transform
+      
+T = (R, t)
+ by minimizing
+    
+
+
+    
+
+      L
+fine
+ = κ( L
+sdf
+ ) + λ · L
+rotation
+
+    
+
+
+    
+
+      where L
+sdf
+ is a bidirectional SDF-consistency term that
+      pushes transformed source points to the target zero-level set (and vice
+      versa), L
+rotation
+ = ‖R
+T
+R − I‖ keeps R orthogonal,
+      and κ is a robust kernel.
+    
+
+
+    
+
+      
+ images/fine_reg.png -->
+      
+
+      
+images/fine_reg.png
+
+      
+
+        Overview of the fine registration stage: candidate image pairs are
+        selected by camera-pose similarity, eLoFTR provides 2D correspondences,
+        these are lifted to 3D via the learned SDFs, and the rigid transform
+        is refined by SDF-consistency losses.
+      
+
+    
+
+
+    
+Fusion (optional retraining)
+
+    
+
+      After fine registration, all camera extrinsics are expressed in a
+      common coordinate frame. A single unified implicit surface is then
+      jointly retrained on the merged multi-view set. This step is optional
+      but consistently improves geometric completeness and rendering quality
+      for objects with severe self-occlusion or fine details.
+    
+
+  
+
+
+
+
+
+
+
+
+  
+
+    
+Dataset
+
+    
+
+      We construct a benchmark of 
+18 objects
+ — 11 synthetic
+      and 7 real-world — each captured under 
+three poses
+ with
+      30–40 multi-view images per pose. Synthetic data is rendered with
+      BlenderNeRF + Blender. Real captures use an iPhone, with intrinsics and
+      extrinsics calibrated against a 1m × 1m ArUco marker board so that all
+      poses share a common metric scale.
+    
+
+
+    
+
+      
+ images/dataset_overview.png -->
+      
+
+      
+images/dataset_overview.png
+
+      
+
+        Overview of the dataset and PoseFusion results. For each object we
+        show a representative input image and a rendered view of the fused
+        3D surface.
+      
+
+    
+
+  
+
+
+
+
+
+
+
+
+  
+
+    
+Results
+
+
+    
+Qualitative comparison
+
+    
+
+      We compare against DReg-NeRF, Reg-NF, and GaussReg on objects with
+      large pose variation, complex topology, partial symmetry, and severe
+      self-occlusion. PoseFusion successfully aligns all three poses and
+      produces coherent, complete reconstructions where baselines fail or
+      diverge by tens of degrees.
+    
+
+
+    
+
+      
+ images/reg_result_cmp.png -->
+      
+
+      
+images/reg_result_cmp.png
+
+      
+
+        Qualitative registration comparison with DReg-NeRF, Reg-NF, and
+        GaussReg. Colors indicate reconstructions from different object
+        poses.
+      
+
+    
+
+
+    
+Fusion improves geometry & rendering
+
+    
+
+      
+ images/fusion_results_detailed.png -->
+      
+
+      
+images/fusion_results_detailed.png
+
+      
+
+        Visual comparison of the final fused geometry (c) and individual
+        pose-wise reconstructions (d). Highlighted regions show details
+        missing or distorted in single-pose results that are recovered after
+        fusion.
+      
+
+    
+
+
+    
+Quantitative comparison (synthetic)
+
+    
+
+      Lower is better for both rotation error 
+R
+ (degrees) and
+      translation error 
+T
+ (×10²). Each cell reports
+      
+source
+1
+ / source
+2
+
+; ``—'' indicates a
+      failed run.
+    
+
+    
+
+      
+
+        
+
+          
+
+            
+Metric
+
+Method
+
+            
+Bunny
+
+Book
+
+Nikon
+
+Heel Slipper
+
+            
+Figurine A
+
+Tank
+
+Monster
+
+            
+Figurine B
+
+Rubik's Cube
+
+Lego
+
+          
+
+        
+
+        
+
+          
+
+R (°) ↓
+
+Reg-NF
+
+            
+3.62/1.84
+
+0.29/0.27
+
+—/—
+
+—/—
+
+            
+—/—
+
+—/—
+
+—/—
+
+—/—
+
+—/—
+
+—/—
+
+
+          
+
+DReg-NeRF
+
+            
+—/—
+
+—/—
+
+—/—
+
+—/—
+
+            
+—/—
+
+—/—
+
+—/—
+
+—/—
+
+—/—
+
+—/—
+
+
+          
+
+GaussReg
+
+            
+13.98/—
+
+10.21/22.27
+
+—/—
+
+3.27/—
+
+            
+—/—
+
+—/—
+
+—/—
+
+25.29/—
+
+—/—
+
+—/—
+
+
+          
+
+
+Ours
+
+
+            
+
+0.09/0.02
+
+
+
+0.11/0.18
+
+
+            
+
+0.09/0.11
+
+
+
+0.12/0.07
+
+
+            
+
+0.01/0.03
+
+
+
+0.14/0.09
+
+
+            
+
+0.03/0.03
+
+
+
+0.04/0.06
+
+
+            
+
+0.08/0.11
+
+
+
+0.05/0.20
+
+
+
+
+          
+
+T (×10²) ↓
+
+Reg-NF
+
+            
+1.47/0.75
+
+0.13/3.84
+
+29.56/23.0
+
+26.25/18.68
+
+            
+21.29/—
+
+—/—
+
+—/—
+
+—/—
+
+—/—
+
+—/—
+
+
+          
+
+DReg-NeRF
+
+            
+11.48/15.11
+
+14.7/12.3
+
+27.72/1.33
+
+2.36/15.55
+
+            
+13.05/12.41
+
+—/—
+
+—/—
+
+—/—
+
+—/—
+
+—/—
+
+
+          
+
+GaussReg
+
+            
+2.40/26.58
+
+1.13/15.15
+
+7.83/—
+
+2.73/—
+
+            
+30.09/—
+
+—/—
+
+—/28.40
+
+11.69/—
+
+—/—
+
+—/—
+
+
+          
+
+
+Ours
+
+
+            
+
+0.10/0.02
+
+
+
+0.06/0.03
+
+
+            
+
+0.07/0.14
+
+
+
+0.03/0.02
+
+
+            
+
+0.01/0.02
+
+
+
+0.13/0.10
+
+
+            
+
+0.03/0.02
+
+
+
+0.03/0.06
+
+
+            
+
+0.14/0.10
+
+
+
+0.07/0.18
+
+
+
+        
+
+      
+
+    
+
+  
+
+
+
+
+
+
+
+
+  
+
+    
+BibTeX
+
+    
+@article{HOU2026104101,
+  title   = {PoseFusion: Fusing neural implicit surfaces for multi-view reconstruction from multi-pose captures},
+  author = {Guanli Hou and Yuanmu Xu and Tenglong Ren and Jiangbei Hu and Fei Hou and Peng Song and Ying He},
+  journal = {Computer-Aided Design},
+  volume = {199},
+  pages = {104101},
+  year = {2026},
+  issn = {0010-4485},
+  doi = {https://doi.org/10.1016/j.cad.2026.104101},
+}
+
+  
+
+
+
+
+
+
+  
+
+    
+
+      Website template inspired by academic project pages. Source available on
+      
+GitHub
+.
+    
+
+  
+
+
+
+
+
+
+
+

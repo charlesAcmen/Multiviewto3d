@@ -1,0 +1,902 @@
+
+
+
+
+
+
+  
+
+  
+
+
+  
+
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-9GETVCQ90R');
+  
+
+
+  
+
+  
+
+  
+
+  
+
+  
+Hand-held Object Reconstruction from RGB Video with Dynamic Interaction
+
+
+  
+
+
+  
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+
+  
+
+
+  
+
+
+  
+
+
+  
+
+
+  
+
+
+  
+
+ -->
+
+
+
+
+
+
+
+
+  
+
+    
+
+      
+
+        
+
+          
+Hand-held Object Reconstruction from RGB Video with Dynamic Interaction
+
+          
+
+            
+
+              
+Shijian Jiang
+
+1
+,
+                  Qi Ye
+
+1,2*
+,
+                  Rengan Xie
+3
+,
+                  Yuchi Huo
+3,4
+,
+                  Jiming Chen
+1
+
+            
+
+          
+
+          
+
+          
+
+            
+
+1
+College of Control Science and Engineering, Zhejiang University   
+
+            
+
+2
+Key Lab of CS&AUS of Zhejiang Province
+
+            
+
+3
+State Key Lab of CAD&CG, Zhejiang University  
+
+            
+
+4
+Zhejiang Lab  
+
+          
+
+
+          
+
+            
+
+          
+
+        
+          
+
+            CVPR 2025
+          
+
+
+          
+
+            
+
+              
+
+              
+
+                
+
+                  
+
+                      
+
+
+                  
+
+                  
+Paper
+
+                
+
+              
+
+              
+
+              
+
+                
+
+                  
+
+                      
+
+
+                  
+
+                  
+Video
+
+                
+
+              
+
+              
+
+              
+
+                
+
+                  
+
+                      
+
+
+                  
+
+                  
+Code
+
+                  
+
+              
+
+            
+
+          
+
+        
+
+      
+
+    
+
+  
+
+
+
+
+
+
+
+
+
+  
+
+    
+
+    
+
+      
+
+        
+Abstract
+
+        
+
+          
+
+            This work aims to reconstruct the 3D geometry of a rigid object manipulated by one or both hands using monocular RGB video. 
+            Previous methods rely on Structure-from-Motion or hand priors to estimate relative motion between the object and camera, which typically assume textured objects or single-hand interactions. 
+            To accurately recover object geometry in dynamic interactions, we incorporate priors from 3D generation model into object pose estimation 
+            and propose semantic consistency constraints to solve the challenge of shape and texture discrepancy between the generated priors and observations. 
+            The poses are initialized, followed by joint optimization of the object poses and implicit neural representation. During optimization, a novel pose outlier voting strategy with inter-view consistency is proposed to correct large pose errors. 
+            Experiments on three datasets demonstrate that our method significantly outperforms the state-of-the-art in reconstruction quality for both single- and two-hand scenarios.
+          
+
+        
+
+      
+
+    
+
+    
+
+
+    
+
+
+    
+
+    
+
+    
+
+      
+
+        
+Overview
+
+        
+
+        
+
+          
+Overview of our framework
+. We first prompt ChatGPT to describe the hand-held object and generate a 3D textured mesh based on this textual description. Despite appearance discrepancies, we leverage semantic consistency to initialize the object pose by aligning the generated prior with the input images in the DINO feature space. We then use the coarse poses to learn an implicit object representation while simultaneously refining the poses. Finally, we introduce a pose outlier voting strategy to correct significantly erroneous poses.
+        
+
+      
+
+    
+
+
+    
+
+  
+
+
+
+
+
+
+
+model-viewer {
+  width: 400px;
+  height: 300px;
+}
+
+
+
+
+
+
+
+
+  
+
+    
+
+      
+Interactive Results
+
+      
+Dataset
+
+
+      
+
+        
+
+          
+
+            Bottle
+          
+
+          
+
+            Box
+          
+
+        
+
+      
+
+
+      
+
+        
+
+          
+
+            
+
+              Ground Truth
+            
+
+            
+
+              Ours
+            
+
+            
+
+              HHOR
+            
+
+            
+
+              NeuS
+            
+
+            
+
+              IHOI
+            
+
+          
+
+        
+
+        
+
+          
+
+            
+
+              
+
+            
+
+          
+
+          
+
+            
+
+              
+
+              
+
+            
+
+          
+
+        
+
+      
+
+      
+
+
+      
+
+        
+
+          
+
+            
+
+              Ground Truth
+            
+
+            
+
+              Ours
+            
+
+            
+
+              HHOR
+            
+
+            
+
+              NeuS
+            
+
+            
+
+              IHOI
+            
+
+          
+
+        
+
+        
+
+          
+
+            
+
+              
+
+              
+
+            
+
+          
+
+          
+
+            
+
+              
+
+              
+
+            
+
+          
+
+        
+
+      
+
+    
+
+  
+
+
+ -->
+
+
+
+
+
+
+
+  
+
+    
+In-the-wild Results
+
+    
+
+      
+
+        
+
+        Your browser does not support the video tag.
+    
+
+    
+
+  
+
+
+
+
+
+
+  
+
+    
+BibTeX
+
+    
+
+@inproceedings{jiang2025hand,
+      title={Hand-held Object Reconstruction from RGB Video with Dynamic Interaction},
+      author={Jiang, Shijian and Ye, Qi and Xie, Rengan and Huo, Yuchi and Chen, Jiming},
+      booktitle={Proceedings of the Computer Vision and Pattern Recognition Conference},
+      pages={12220--12230},
+      year={2025}
+    }
+
+
+  
+
+
+
+
+
+
+
+  
+
+    
+
+      
+Contact
+
+      
+
+        For questions, feel free to contact Shijian Jiang (jsj630@zju.edu.cn)
+      
+
+    
+
+  
+
+
+
+
+
+
+
+
+  var data_bottle = {
+    "gt":{
+      "img":"static/models/Bottle/reference.png",
+      "model":"static/models/Bottle/gt.glb"
+    },
+    "ours":{
+      "img":"static/models/Bottle/reference.png",
+      "model":"static/models/Bottle/ours.glb"
+    },
+    "hhor":{
+      "img":"static/models/Bottle/reference.png",
+      "model":"static/models/Bottle/hhor.glb"
+    },
+    "neus":{
+      "img":"static/models/Bottle/reference.png",
+      "model":"static/models/Bottle/neus.glb"
+    },
+    "ihoi":{
+      "img":"static/models/Bottle/reference.png",
+      "model":"static/models/Bottle/ihoi.glb"
+    },
+  }
+  var data_box = {
+    "gt":{
+      "img":"static/models/Box/reference.png",
+      "model":"static/models/Box/gt.glb"
+    },
+    "ours":{
+      "img":"static/models/Box/reference.png",
+      "model":"static/models/Box/ours.glb"
+    },
+    "hhor":{
+      "img":"static/models/Box/reference.png",
+      "model":"static/models/Box/hhor.glb"
+    },
+    "neus":{
+      "img":"static/models/Box/reference.png",
+      "model":"static/models/Box/neus.glb"
+    },
+    "ihoi":{
+      "img":"static/models/Box/reference.png",
+      "model":"static/models/Box/ihoi.glb"
+    },
+  }
+
+
+
+
+  data = data_bottle;
+  function sync1to2video() {
+    document.getElementById('v1').currentTime = 0;
+    document.getElementById('v2').currentTime = 0;
+  }
+
+  v1 = document.getElementById("v1")
+  v2 = document.getElementById("v2")
+
+  m1 = document.getElementById("m1")
+  m2 = document.getElementById("m2")
+
+
+  method1 = 'gt';
+  method2 = 'ours';
+
+  function update_buttons()
+  {
+    document.getElementById('bottle').className = 'button is-normal is-rounded';
+    document.getElementById('box').className = 'button is-normal is-rounded';
+    // document.getElementById('mug').className = 'button is-normal is-rounded';
+
+
+    v1.setAttribute('src', data[method1]['img']);
+    m1.setAttribute('src', data[method1]['model']);
+
+    v2.setAttribute('src', data[method2]['img']);
+    m2.setAttribute('src', data[method2]['model']);
+  }
+  // DATA LOADING
+  btn_bottle = document.getElementById('bottle');
+  btn_bottle.addEventListener('click', function onClick() {
+    data = data_bottle;
+    update_buttons();
+    btn_bottle.className = 'button is-info is-rounded';
+    // set the video
+  });
+
+  btn_box = document.getElementById('box');
+  btn_box.addEventListener('click', function onClick() {
+    data = data_box;
+    update_buttons();
+    btn_box.className = 'button is-info is-rounded';
+    // set the video
+  });
+
+
+
+  btn_1gt = document.getElementById('1_gt');
+  btn_1gt.addEventListener('click', function onClick() {
+
+    btn_1gt.className = 'button is-info is-rounded';
+    // document.getElementById('1_gt').className = 'button is-normal is-rounded';
+    document.getElementById('1_ours').className = 'button is-normal is-rounded';
+    document.getElementById('1_hhor').className = 'button is-normal is-rounded';
+    document.getElementById('1_neus').className = 'button is-normal is-rounded';
+    document.getElementById('1_ihoi').className = 'button is-normal is-rounded';
+    // set the video
+    v1.setAttribute('src', data['gt']['img']);
+    m1.setAttribute('src', data['gt']['model']);
+    method1 = "gt";
+    sync1to2video();
+  });
+
+  btn_ours1 = document.getElementById('1_ours');
+  btn_ours1.addEventListener('click', function onClick() {
+
+    btn_ours1.className = 'button is-info is-rounded';
+    document.getElementById('1_gt').className = 'button is-normal is-rounded';
+    //document.getElementById('1_ours').className = 'button is-normal is-rounded';
+    document.getElementById('1_hhor').className = 'button is-normal is-rounded';
+    document.getElementById('1_neus').className = 'button is-normal is-rounded';
+    document.getElementById('1_ihoi').className = 'button is-normal is-rounded';
+
+    v1.setAttribute('src', data['ours']['img']);
+    m1.setAttribute('src', data['ours']['model']);
+    method1 = "ours";
+    sync1to2video();
+
+  });
+
+  btn_1hhor = document.getElementById('1_hhor');
+  btn_1hhor.addEventListener('click', function onClick() {
+
+    btn_1hhor.className = 'button is-info is-rounded';
+    document.getElementById('1_gt').className = 'button is-normal is-rounded';
+    document.getElementById('1_ours').className = 'button is-normal is-rounded';
+    //document.getElementById('1_hhor').className = 'button is-normal is-rounded';
+    document.getElementById('1_neus').className = 'button is-normal is-rounded';
+    document.getElementById('1_ihoi').className = 'button is-normal is-rounded';
+
+    v1.setAttribute('src', data['hhor']['img']);
+    m1.setAttribute('src', data['hhor']['model']);
+    method1 = "hhor";
+    sync1to2video();
+
+  });
+
+  btn_1neus = document.getElementById('1_neus');
+  btn_1neus.addEventListener('click', function onClick() {
+
+    btn_1neus.className = 'button is-info is-rounded';
+    document.getElementById('1_gt').className = 'button is-normal is-rounded';
+    document.getElementById('1_ours').className = 'button is-normal is-rounded';
+    document.getElementById('1_hhor').className = 'button is-normal is-rounded';
+    //document.getElementById('1_neus').className = 'button is-normal is-rounded';
+    document.getElementById('1_ihoi').className = 'button is-normal is-rounded';
+
+    v1.setAttribute('src', data['neus']['img']);
+    m1.setAttribute('src', data['neus']['model']);
+    method1 = "neus";
+    sync1to2video();
+
+  });
+
+  btn_1ihoi = document.getElementById('1_ihoi');
+  btn_1ihoi.addEventListener('click', function onClick() {
+
+    btn_1ihoi.className = 'button is-info is-rounded';
+    document.getElementById('1_gt').className = 'button is-normal is-rounded';
+    document.getElementById('1_ours').className = 'button is-normal is-rounded';
+    document.getElementById('1_hhor').className = 'button is-normal is-rounded';
+    document.getElementById('1_neus').className = 'button is-normal is-rounded';
+    //document.getElementById('1_ihoi').className = 'button is-normal is-rounded';
+
+    v1.setAttribute('src', data['ihoi']['img']);
+    m1.setAttribute('src', data['ihoi']['model']);
+    method1 = "ihoi";
+    sync1to2video();
+
+  });
+
+
+// 222222
+
+
+btn_2gt = document.getElementById('2_gt');
+btn_2gt.addEventListener('click', function onClick() {
+
+  btn_2gt.className = 'button is-info is-rounded';
+  // document.getElementById('2_gt').className = 'button is-normal is-rounded';
+  document.getElementById('2_ours').className = 'button is-normal is-rounded';
+  document.getElementById('2_hhor').className = 'button is-normal is-rounded';
+  document.getElementById('2_neus').className = 'button is-normal is-rounded';
+  document.getElementById('2_ihoi').className = 'button is-normal is-rounded';
+  // set the video
+  v2.setAttribute('src', data['gt']['img']);
+  m2.setAttribute('src', data['gt']['model']);
+  method2 = "gt";
+  sync1to2video();
+});
+
+btn_ours2 = document.getElementById('2_ours');
+btn_ours2.addEventListener('click', function onClick() {
+
+  btn_ours2.className = 'button is-info is-rounded';
+  document.getElementById('2_gt').className = 'button is-normal is-rounded';
+  //document.getElementById('2_ours').className = 'button is-normal is-rounded';
+  document.getElementById('2_hhor').className = 'button is-normal is-rounded';
+  document.getElementById('2_neus').className = 'button is-normal is-rounded';
+  document.getElementById('2_ihoi').className = 'button is-normal is-rounded';
+
+  v2.setAttribute('src', data['ours']['img']);
+  m2.setAttribute('src', data['ours']['model']);
+  method2 = "ours";
+  sync1to2video();
+
+});
+
+btn_2hhor = document.getElementById('2_hhor');
+btn_2hhor.addEventListener('click', function onClick() {
+
+  btn_2hhor.className = 'button is-info is-rounded';
+  document.getElementById('2_gt').className = 'button is-normal is-rounded';
+  document.getElementById('2_ours').className = 'button is-normal is-rounded';
+  //document.getElementById('2_hhor').className = 'button is-normal is-rounded';
+  document.getElementById('2_neus').className = 'button is-normal is-rounded';
+  document.getElementById('2_ihoi').className = 'button is-normal is-rounded';
+
+  v2.setAttribute('src', data['hhor']['img']);
+  m2.setAttribute('src', data['hhor']['model']);
+  method2 = "hhor";
+  sync1to2video();
+
+});
+
+btn_2neus = document.getElementById('2_neus');
+btn_2neus.addEventListener('click', function onClick() {
+
+  btn_2neus.className = 'button is-info is-rounded';
+  document.getElementById('2_gt').className = 'button is-normal is-rounded';
+  document.getElementById('2_ours').className = 'button is-normal is-rounded';
+  document.getElementById('2_hhor').className = 'button is-normal is-rounded';
+  //document.getElementById('2_neus').className = 'button is-normal is-rounded';
+  document.getElementById('2_ihoi').className = 'button is-normal is-rounded';
+
+  v2.setAttribute('src', data['neus']['img']);
+  m2.setAttribute('src', data['neus']['model']);
+  method2 = "neus";
+  sync1to2video();
+
+});
+
+btn_2ihoi = document.getElementById('2_ihoi');
+btn_2ihoi.addEventListener('click', function onClick() {
+
+  btn_2ihoi.className = 'button is-info is-rounded';
+  document.getElementById('2_gt').className = 'button is-normal is-rounded';
+  document.getElementById('2_ours').className = 'button is-normal is-rounded';
+  document.getElementById('2_hhor').className = 'button is-normal is-rounded';
+  document.getElementById('2_neus').className = 'button is-normal is-rounded';
+  //document.getElementById('2_ihoi').className = 'button is-normal is-rounded';
+
+  v2.setAttribute('src', data['ihoi']['img']);
+  m2.setAttribute('src', data['ihoi']['model']);
+  method2 = "ihoi";
+  sync1to2video();
+
+});
+
+// Original script to synchronize playback of two HTML5 video windows
+  // by Adam Pierce.
+  // http://siliconsparrow.com/synchronize-two-video-replays-using-javascript/
+  // This script is public domain. You can copy, modify and share it as much
+  // as you like.
+
+  // sync 2nd (right) video to playing position of 1st (left) video
+  window.onload = function(){
+        var v1 = document.getElementById('v1');
+        // console.log("YEAH");
+        v1.addEventListener("play", function() {
+          document.getElementById('v2').play();
+        });
+
+        v1.addEventListener("pause", function() {
+          document.getElementById('v2').pause();
+        });
+
+        v1.addEventListener("seeking", function() {
+          document.getElementById('v2').currentTime = v1.currentTime;
+        });
+
+        v1.addEventListener("seeked", function() {
+          document.getElementById('v2').currentTime = v1.currentTime;
+        });
+        v1.addEventListener("onloadstart", function() {
+          document.getElementById('v2').currentTime = v1.currentTime;
+        });
+
+  }
+
+
+
+
+
+
+
+  
+
+    
+
+      
+
+        
+
+          
+
+            Website taken from
+              
+here
+.
+          
+
+        
+
+      
+
+    
+
+  
+
+
+
+
+
+
+
+

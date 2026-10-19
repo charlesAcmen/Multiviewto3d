@@ -1,0 +1,77 @@
+{
+  "verified_at_utc": "2026-10-19T07:54:25.150800+00:00",
+  "purpose": "Static evidence identity; not a benchmark or upstream commit claim",
+  "sources": [
+    {
+      "path": "evidence/code/debsdf_readme.md",
+      "bytes": 9268,
+      "sha256": "f65152055a8072cb1d915f3fd042798bf01a80840102bf328faf06fe15fb97d1"
+    },
+    {
+      "path": "evidence/code/dynhor_readme.md",
+      "bytes": 3124,
+      "sha256": "d1ccaa2586cbbc7995150aedfcdc648650c673782582cbdb4abbf593cd1b62a7"
+    },
+    {
+      "path": "evidence/code/hold_setup.md",
+      "bytes": 7887,
+      "sha256": "dd54d0ff87a1df10f2a387c7ee49020b6ed67e198048323f4a8b02eed6bd9f17"
+    },
+    {
+      "path": "evidence/code/hold_usage.md",
+      "bytes": 7984,
+      "sha256": "8c2025a325bc288cc192cee2a8bc6a29980bc47042f06c02ce55301382a75701"
+    },
+    {
+      "path": "evidence/code/milo_default.yaml",
+      "bytes": 1863,
+      "sha256": "c9e25cbcf35d0506b487f1cc0e7667a3597b68eb130fd81838c987273ecc658d"
+    },
+    {
+      "path": "evidence/code/milo_train.py",
+      "bytes": 29953,
+      "sha256": "187aba6ef9afd47c2d2a3a64d6c79758864923701d1f5e71561f0ffb8bf13f72"
+    },
+    {
+      "path": "evidence/code/neuralangelo_extract.py",
+      "bytes": 4827,
+      "sha256": "fbeae19b099906247c8e07fb87d97321052ddfae5e5ae79b4a4e378636881d1e"
+    },
+    {
+      "path": "evidence/code/neus2_base.json",
+      "bytes": 2311,
+      "sha256": "502a73a462be1b639d48d169fa8bc6770aa05dbd34b5dbe40eb9d3ac23764c24"
+    },
+    {
+      "path": "evidence/code/neus2_extract.cu",
+      "bytes": 46215,
+      "sha256": "d8ee97df9463d3ec77916d6a5346462d5853212d3a696a024ea0f802bf9cc30a"
+    },
+    {
+      "path": "evidence/code/neus2_loader.cu",
+      "bytes": 33742,
+      "sha256": "e4796ca4e0e08a6714089720c4a04a6d4ece5bf8b209368f7f657df4643d40c3"
+    },
+    {
+      "path": "evidence/code/neus2_run.py",
+      "bytes": 15374,
+      "sha256": "a80ae5354f65510c3db5cb7e848fb032cf4bc670bb7914fad72b62f1a310513d"
+    },
+    {
+      "path": "evidence/code/objectcarver_readme.md",
+      "bytes": 2593,
+      "sha256": "4ead347118860bd6ebbb5d48887a1c24def89134a2a464eb47192a0144f9fc2c"
+    },
+    {
+      "path": "evidence/uapose.pdf",
+      "bytes": 5500843,
+      "sha256": "b982beece5b93f0f1ada036d17f81ef9644a7cb15a19eca038294d65f084406d"
+    },
+    {
+      "path": "evidence/manifoldneus.pdf",
+      "bytes": 11358058,
+      "sha256": "90aad36f21fef3f3ea5bf2de7ad02eeb6845ebdf58f300019bb49e7940d6e8e0"
+    }
+  ],
+  "document_check_errors": []
+}

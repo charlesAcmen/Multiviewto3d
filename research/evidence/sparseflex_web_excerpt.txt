@@ -1,0 +1,161 @@
+SparseFlex: High-Resolution and Arbitrary-Topology 3D Shape Modeling (https://arxiv.org/html/2503.21732v1)
+citeturn23view0 [wordlim: 200] Crawled: today; Content type: text/html; Source: open({"ref_id":"https://arxiv.org/html/2503.21732v1","lineno":150}); Total lines: 383
+L116: The second category focuses on native 3D generation model that directly generate 3D models through generative models, including GAN [cite122†76 , cite123†3 , cite124†7 , cite125†94 ], auto-regressive [cite126†50 , cite127†86 ], diffusion [cite47†68 , cite128†25 , cite56†87 , cite55†91 ] and rectified flow [cite58†35 , cite53†78 ].
+L117: Due to the diverse and non-compact nature of 3D representation, many approaches use Variational Auto-Encoder (VAE) [cite129†29 ] or Vector Quantized VAE (VQ-VAE) [cite130†69 ] to encode 3D shapes into latent spaces for the generative models. Geometry-focused methods often input point clouds uniformly sampled from mesh surfaces into the VAE [cite56†87 , cite131†5 ]. When aim at decoding both geometry and texture, some methods [cite53†78 , cite66†31 , cite54†32 ] encode multiview image features into latent spaces.
+L118: This two-stage process makes the VAE’s reconstruction quality crucial for subsequent generation performance. Some works [cite65†85 , cite131†5 ] have improved generation quality by enhancing the VAE’s shape encoding-decoding capabilities. In this paper, we aim to develop a foundational VAE that encodes 3D shapes into latent spaces and reconstructs them with arbitrary topology while preserving the raw 3D shape’s details.
+L119: ## 3 Method
+L120: We present a method for high-resolution 3D shape modeling based on a novel sparse-structured isosurface representation, SparseFlex. Our approach leverages differentiable rendering for training, enabling accurate reconstruction of complex geometries, including open surfaces and interiors (see .  cite132†Fig. 2 illustrates our variational autoencoder (VAE) based shape modeling pipeline, which utilizes the SparseFlex representation to learn a compact latent space of 3D shapes.
+L121: The VAE decoder outputs the parameters of a SparseFlex instance, facilitating high-resolution mesh reconstruction. A key component of our approach is frustum-aware sectional voxel training, which significantly reduces memory consumption, allowing for training at resolutions up to $1024^{3}$. Details of the SparseFlex representation are provided in  cite15†Sec. 3.1 , followed by a description of the VAE architecture in  cite18†Sec. 3.2 and the training procedure in cite22†Sec. 3.3 .
+L122: cite26†Sec. 3.4 describes image-conditioned 3D shape generation using a rectified flow transformer on the learned latent space.
+L123: cite133†Image: Refer to caption Figure 3: Frustum-aware sectional voxel training. The previous mesh-based rendering training strategy (left) requires activating the entire dense grid to extract the mesh surface, even though only a few voxels are necessary during rendering. In contrast, our approach (right) adaptively activates the relevant voxels and enables the reconstruction of mesh interiors only using rendering supervision.
+L124: ### 3.1 SparseFlex Representation
+L125: #### Preliminary.
+L126: To achieve differentiable mesh extraction while preserving sharp features, we build upon Flexicubes [cite78†61 ], a method based on Dual Marching Cubes [cite101†53 ] (DMC). DMC places vertices at the center of voxels rather than edges/corners, leading to better feature preservation. Flexicubes constructs a dense voxel with a resolution of $N_{r}^{3}$, where an SDF scalar grid $s\in\mathbb{R}^{N_{g}^{3}}$ is assigned to the voxel corner points, where $N_{g}=N_{r}+1$.
+L127: For each voxel, it incoporates interpolation weights $\alpha\in\mathbb{R}_{>0}^{N_{r}^{3}\times 8},\beta\in\mathbb{R}_{>0}^{N_{r}^{3}\times 12}$ to each voxel cell, and deformation vectors $\delta\in\mathbb{R}^{N_{g}^{3}}$ to each SDF grid. The underlying surface mesh can be effectively optimized via differentiable rendering [cite134†30 ].
+L128: #### Sparse Structured Flexicubes.
+L129: The core design of SparseFlex is the introduction of a sparse voxel structure, enabling high-resolution shape representation while drastically reducing memory consumption. Instead of a dense grid, SparseFlex represents a shape using a significantly smaller set of voxels, $\mathcal{V}$, concentrated near the surface.
+L130: This sparsity is crucial for two reasons: (1) it allows us to achieve much higher resolutions than would be possible with a dense grid, and (2) it enables the natural representation of open surfaces by simply omitting voxels in empty regions.
+L131: Specifically, the SparseFlex is defined by a set of $N_{v}$ voxels, $\mathcal{V}=\{v_{i}=(x_{i},y_{i},z_{i})\}$, where $v_{i}$ represents the 3D coordinates of the center of the $i$-th voxel. Let $N_{c}$ be the number of corner grids associated with these voxels, where $N_{v}=|\mathcal{V}|$. Each voxel is associated with interpolation weights $\{\alpha_{i}\in\mathbb{R}_{>0}^{8},\beta_{i}\in\mathbb{R}_{>0}^{12}|0\leq i<N_{v}\}$.
+L132: Each corner grid is associated with an SDF value $\{s_{j}|0\leq j<N_{c}\}$ and deformation vectors $\{\delta_{j}|0\leq j<N_{c}\}$. Due to the sparsity, $N_{v}\ll N_{r}^{3}$ and $N_{c}\ll N_{g}^{3}$, representing a significant reduction in memory usage compared to the dense Flexicubes representation. We only apply Dual Marching Cubes on these sparse voxels to extract the underlying surface. Formally, the SparseFlex representation, $\mathcal{S}$, is defined as:
+L133:  | $$\small\mathcal{S}=(\mathcal{V},\mathcal{F}_{c},\mathcal{F}_{v}),\hskip 9.24994pt\mathcal{F}_{c}=\{s_{j},\delta_{j}\},\hskip 9.24994pt\mathcal{F}_{v}=\{\alpha_{i},\beta_{i}\},$$  |  | (1)
+L134: 
+L135: where $\mathcal{V}$ represents the voxel centers, $\mathcal{F}_{c}$ contains the SDF values and deformations at the corner grids, and $\mathcal{F}_{v}$ contains the interpolation weights for each voxel.
+L136: SparseFlex inherits the differentiability of Flexicubes, allowing for end-to-end optimization using rendering losses. This eliminates the need for watertight mesh pre-processing, preserving fine details. Furthermore, the sparse structure, combined with the continuous and deformable nature of the SDF, allows for accurate and efficient representation of high-quality open-surface meshes. The sparsity also paves the way for our efficient frustum-aware training strategy, described in cite22†Sec. 3.3 .
+L137: ### 3.2 SparseFlex VAE for Shape Modeling
+L138: To learn a compact and disentangled latent space of 3D shapes, we employ a variational autoencoder (VAE) [cite129†29 ] that utilizes the SparseFlex representation. A VAE learns a probabilistic mapping between an input space (in our case, 3D shapes represented as point clouds) and a lower-dimensional latent space, enabling both reconstruction and generation of shapes. cite132†Fig. 2 also illustrates our VAE architecture.
+L139: Our architecture draws inspiration from TRELLIS [cite53†78 ], but with key modifications to leverage the strengths of SparseFlex.
+L140: #### Encoder.
+L141: The input to our encoder is a point cloud $\mathcal{P}=\{p_{i}\in\mathbb{R}^{3}\}_{i=1}^{N_{p}}$, uniformly sampled from the surface of a 3D mesh, along with corresponding normals $\mathcal{N}=\{n_{i}\in\mathbb{R}^{3}\}_{i=1}^{N_{p}}$. We first voxelize the point cloud to obtain the sparse structure $\mathcal{V}$ of the SparseFlex representation $\mathcal{S}$. We then employ a shallow PointNet [cite89†57 ] to aggregate local geometric features within each voxel.
+L142: Specifically, for each voxel $v_{i}\in\mathcal{V}$, we apply a local max-pooling operation [cite100†55 ] to the points contained within that voxel, producing a feature vector $f_{i}$. These voxel features $\mathcal{F}=\{f_{i}\}$, along with the sparse structure $\mathcal{V}$, are then fed into a sparse transformer backbone.
+L143: This backbone utilizes shifted window attention [cite135†39 , cite136†82 ], similar to TRELLIS [cite53†78 ], but is adapted to operate directly on the sparse voxel features $\mathcal{F}$ and structure $\mathcal{V}$. The transformer outputs a latent code $z\in\mathbb{R}^{d_{z}}$, which represents the encoded 3D shape.
+L144: #### Decoder.
+L145: 
+L146: The decoder takes the latent code $z$ as input and predicts the parameters of a SparseFlex instance, $\mathcal{S}=(\mathcal{V},\mathcal{F}_{c},\mathcal{F}_{v})$. We use a series of transformer layers, culminating in a final linear layer, to predict the SDF values ($s_{j}$) and deformations ($\delta_{j}$) for each corner grid, as well as the interpolation weights ($\alpha_{i}$, $\beta_{i}$) for each voxel.
+L147: #### Upsampling Modules.
+L148: To achieve high-resolution reconstructions, we incorporate two convolutional, self-pruning upsampling modules within the decoder, following the transformer. These modules progressively increase the resolution of the SparseFlex representation. Each upsampling module subdivides existing voxels into smaller voxels (increasing the resolution by a factor of $4$). Crucially, each module also $prunes$ redundant voxels based on a predicted occupancy value.
+L149: A voxel is considered occupied if, after the subdivision, it contains any points from the input point cloud $\mathcal{P}$. This pruning process, inspired by [cite57†59 ], is essential for maintaining the sparsity of the SparseFlex representation and is particularly beneficial for accurately representing open surfaces, as it removes unnecessary voxels in empty regions.
+L150: ### 3.3 Training SparseFlex VAE
+L151: 
+L152: We train our SparseFlex VAE end-to-end using rendering losses, leveraging the differentiability of the SparseFlex representation and a new training strategy called frustum-aware sectional voxel training. This strategy dramatically reduces memory consumption during training, enabling us to achieve high resolutions (up to $1024^{3}$) that would be infeasible with traditional approaches.
+L153: #### Frustum-aware Sectional Voxel Training.
+L154: Even with the sparse structure of SparseFlex, directly rendering the entire representation at high resolutions can be computationally expensive. Furthermore, standard rendering supervision typically focuses only on the visible surface, neglecting the interior of the shape.
+L155: Besides, recent methods [cite79†80 , cite53†78 , cite137†75 , cite80†73 , cite138†36 ] relying on rendering supervision from mesh typically require extracting the entire mesh because a dense representation doesn’t trivially allow for partial extraction. In contrast, our sparse representation naturally enables partial extraction. To address these issues, we introduce frustum-aware sectional voxel training.
+L156: Inspired by techniques used in real-time rendering for efficient visibility culling [cite81†1 ], this approach activates only the voxels within the camera’s viewing frustum during each training iteration. “Activating” a voxel means including it in the isosurface extraction and rendering process. This “sectional” approach means we only process a portion of the 3D space at a time, markedly reducing memory usage.
+L157: As illustrated in cite82†Fig. 3 , given the camera’s extrinsic $\pi$, intrinsics $K$, and the near ($n$) and far ($f$) clipping planes of the viewing frustum, we compute the Model-View-Projection (MVP) matrix $\mathbf{MVP}$. We then use a boolean operator to check whether the center of each voxel $v_{i}$ lies within the viewing frustum defined by the MVP matrix. We use $I(v_{i}\in\text{Frustum}(\mathbf{MVP}))$ to represent this check, where $I(\cdot)$ is an indicator function.
+L158: The set of active voxels, $\mathcal{V}_{\text{active}}$, is then defined as:
+L159:  | $$\small\mathcal{V}_{\text{active}}=\{v_{i}|I(v_{i}\in\text{Frustum}(\mathbf{MVP}))=1,v_{i}\in\mathcal{V}\}.$$  |  | (2)
+L160: #### Adaptive Frustum and Interior Reconstruction.
+L161: 
+L162: We introduce a visibility ratio $\alpha$ ($0<\alpha\leq 1$) controlling the proportion of active voxels in SparseFlex. We adaptively adjust the near and far clipping planes to ensure that approximately $\alpha N_{v}$ voxels are within the frustum. This is achieved through an iterative process: we initially set the near and far planes and iteratively adjust them based on the number of active voxels until the desired proportion is reached.
+L163: This adaptive frustum also enables a novel capability: reconstructing mesh interiors using only rendering supervision. By positioning a virtual camera inside the object or adjusting the near clipping plane to intersect the mesh, we can render and supervise the internal structure (see cite139†Fig. 4 ). Moreover, the zoom-in camera viewpoint can render the mesh surface with greater details, making it better for higher-resolution training.
+L164: This is a significant advantage over methods that rely on watertight representations, which cannot capture interior details.
+L165: #### Loss Function.
+L166: 
+L167: We train our VAE in an end-to-end manner, with an objective function comprising four components:
+L168: 
+L169:  | $$\small\mathcal{L}=\lambda_{1}\mathcal{L_{\text{render}}}+\lambda_{2}\mathcal{L_{\text{prune}}}+\lambda_{3}\mathcal{L_{\text{KL}}}+\lambda_{4}\mathcal{L_{\text{flex}}},$$  |  | (3)
+L170: 
+L171: where $\lambda_{1}$, $\lambda_{2}$, $\lambda_{3}$, and $\lambda_{4}$ are weighting coefficients that balance the different loss terms.
+L172: $\mathcal{L}_{\text{render}}$ is the rendering supervision loss. We employ a combination of losses commonly used in differentiable rendering [cite140†49 , cite141†28 ]:
+L173: 
+L174:  | $$\small\mathcal{L}_{\text{render}}=\lambda_{d}\mathcal{L}_{d}+\lambda_{n}\mathcal{L}_{n}+\lambda_{m}\mathcal{L}_{m}+\lambda_{ss}\mathcal{L}_{ss}+\lambda_{lp}\mathcal{L}_{lp},$$  |  | (4)
+L175: where $\mathcal{L}_{d}$, $\mathcal{L}_{n}$, and $\mathcal{L}_{m}$ denote the L1 loss for depth maps, normal maps, and mask maps, respectively. $\mathcal{L}_{ss}$ and $\mathcal{L}_{lp}$ denote SSIM loss and LPIPS loss, and are only applied on normal maps. Please refer to the supplementary material for a detailed definition of these losses and their weighting coefficients.
+L176: $\mathcal{L}_{\text{prune}}$ is the structure loss, formulated as a binary cross-entropy (BCE) loss, supervising the construction of sparse voxels:
+L177: 
+L178:  | $$\small\mathcal{L}_{\text{prune}}=\text{BCE}\left(V,\hat{V}\right),$$  |  | (5)
+L179: 
+L180: where $V$ represents the ground-truth occupancy of voxels derived from the input point cloud and $\hat{V}$ represents the predicted occupancy by the upsampling modules.
+L181: $\mathcal{L}_{\text{KL}}$ is the KL divergence between the learned latent distribution and a standard normal prior, regularizing the latent space. $\mathcal{L}_{\text{flex}}$ is the regularization term from Flexicubes [cite78†61 ] to encourage smooth SDF values.
+L182: ### 3.4 Image-to-3D Generation with Rectified Flow
+L183: 
+L184: Building upon the trained SparseFlex VAE, we develop a pipeline for high-quality, image-conditioned 3D shape generation, following a similar approach to TRELLIS [cite78†61 ]. Our approach consists of two main components: Structure Flow Model and Structured Latent Flow Model.
+L185: #### Structure Flow Model.
+L186: First, a separate, simple fully 3D convolutional structure VAE is employed to compress dense voxels representing 3D shapes into a low-resolution ($1/4$ scale) space. Subsequently, the image condition features are extracted using DINOv2 [cite142†54 ] and injected into the transformer model via cross-attention, after which a rectified flow model is trained within this low-resolution space.
+L187: During inference, given an input image, the trained structure flow model generates the corresponding low-resolution 3D space, which is then decoded by the structure VAE to produce the sparse structure of the generated 3D shape.
+L188: #### Structured Latent Flow Model.
+L189: Based on the proposed SparseFlex VAE, the point cloud and the corresponding voxelized sparse structure of a 3D shape are encoded into a structured latent space. Subsequently, the image condition feature obtained via DINOv2 is injected into the sparse transformer model through cross-attention, followed by training a rectified-flow model within this structured latent space.
+L190: During inference, given an input image, the corresponding sparse structure is first generated using the structure flow model and its structure VAE. Then, both the sparse structure and the input image are provided to the structured latent flow model to generate the corresponding structured latent representation. Finally, the SparseFlex VAE decodes this latent representation to produce the final 3D shape.
+L191: Method  | Toys4k  | Dora Benchmark
+L192: $\mathbf{CD\downarrow}$  | $\mathbf{F1(0.001)\uparrow}$  | $\mathbf{F1(0.01)\uparrow}$  | $\mathbf{CD\downarrow}$  | $\mathbf{F1(0.001)\uparrow}$  | $\mathbf{F1(0.01)\uparrow}$
+L193: Craftsman [cite62†34 ]  | 13.08/4.63  | 10.13/15.15  | 56.51/85.02  | 13.54/2.06  | 6.30/11.14  | 73.71/91.95
+L194: Dora [cite131†5 ]  | 11.15/2.13  | 17.29/26.55  | 81.54/93.84  | 16.61/1.08  | 13.65/25.78  | 78.73/96.40
+L195: Trellis [cite53†78 ]  | 12.90/11.89  | 4.05/4.93  | 59.65/64.05  | 17.42/9.83  | 3.81/6.20  | 62.70/71.95
+L196: XCube [cite57†59 ]  | 4.35/3.14  | 1.61/13.49  | 74.65/79.62  | 4.74/2.37  | 1.31/0.84  | 75.64/86.50
+L197: 3PSDF^{∗} [cite75†6 ]  | 4.51/3.69  | 11.33/14.10  | 81.70/86.13  | 7.45/1.68  | 7.52/12.50  | 79.43/91.17
+L198: Ours_{256}  | 2.56/1.25  | 18.31/27.23  | 85.35/92.01  | 1.93/0.53  | 16.24/28.37  | 88.76/97.31
+L199: Ours_{512}  | 1.67/0.84  | 23.74/34.10  | 90.39/95.60  | 1.36/0.23  | 21.85/36.03  | 91.55/98.51
+L200: Ours_{1024}  | 1.33/0.60  | 25.95/35.69  | 92.30/96.22  | 0.86/0.12  | 25.71/39.50  | 94.71/99.14
+L201: Table 1: Quantitative comparison for VAE reconstruction quality on the Toys4K dataset (left) and Dora benchmark (right). The ‘/’ symbol separates the results computed over the entire dataset from those obtained exclusively on the watertight subset.
+L202: Method  | $\mathbf{CD\downarrow}$  | $\mathbf{F1(0.001)\uparrow}$  | $\mathbf{F1(0.01)\uparrow}$
+L203: --- | --- | --- | ---
+L204: Surf-D [cite73†84 ]  | 63.79  | 0.80  | 23.17
+L205: 3PSDF^{∗} [cite75†6 ]  | 0.26  | 8.14  | 99.35
+L206: Ours${}_{256}^{\dagger}$  | 0.55  | 6.35  | 94.88
+L207: Ours_{256}  | 0.08  | 18.60  | 99.99
+L208: Ours${}_{512}^{\dagger}$  | 0.18  | 11.31  | 99.93
+L209: Ours_{512}  | 0.05  | 31.60  | 100.00
+L210: Ours${}_{1024}^{\dagger}$  | 0.05  | 24.80  | 100.00
+L211: Ours_{1024}  | 0.04  | 37.22  | 100.00
+L212: Table 2: Reconstruction results on open-surface dataset Deepfashion3D. ^{†} indicates the absence of the self-pruning upsampling module.
+L213: ## 4 Experiments
+L214: ### 4.1 Implementation Details
+L215: We develop the implementation of SparseFlex based on the official code^{1} provided by FlexiCubes [cite78†61 ]. We train SparseFlex VAE and structured latent flow model using approximately 400K high-quality 3D meshes filtered from large-scale datasets, Objaverse (-XL) [cite87†14 , cite143†13 ].
+L216: Since incorrect normals in raw data can significantly degrade the performance of both VAE reconstruction and image-to-3D generation, we apply a mesh preprocessing step to correct these flipped normals, ensuring that all normals are consistently oriented outwards. Please refer to the supplementary for more details.
+L217: Building on the success of progressive training in recent works [cite55†91 ], we train SparseFlex VAE progressively, increasing final resolution from low to high (256, 512, and 1024). For the structure VAE and structure flow model, we adopt the model from Trellis [cite53†78 ] and finetune their pre-trained weights to our task. We train SparseFlex VAE on 64 A100 GPUs with a batch size of 64 and train structured latent flow models with a batch size of 256.
+L218: We use the AdamW [cite144†44 ] optimizer with an initial learning rate of $1e-4$ and the weight decay as $0.01$. At inference, we generate the results with 3.5 CFG and 50 sampling steps. ^{†}^{†}footnotetext: ^{1}cite145†https://github.com/nv-tlabs/FlexiCubes†github.com L219: cite146†Image: Refer to caption Figure 4: Qualitative comparison of VAE reconstruction between ours and other state-of-the-art baselines. Our approach demonstrate superior performance in reconstructing complex shapes, open surfaces, and even interior structures.
+L220: ### 4.2 Dataset, Baselines, and Metrics
+L221: #### Dataset.
+L222: We evaluate the reconstruction quality of VAE across different methods on a diverse set of datasets, including 1) universal datasets ABO [cite84†12 ], GSO [cite85†15 ], Meta [cite86†48 ], Objaverse [cite87†14 ], Toys4k [cite83†64 ] and 2) open-surface dataset Deepfashion3D [cite88†19 ]). The test list of ABO, GSO, Meta, and Objaverse is derived from Dora benchmark [cite131†5 ] after excluding our training data which includes about 2.7k assets. For Toys4k, we use the full set following Trellis [cite53†78 ].
+L223: For the image-to-3D generation, we evaluate the methods on 200 random assets from Toys4k [cite83†64 ] and some images in the wild, showcasing the superior potential on generation tasks of SparseFlex VAE.
+L224: #### Baselines.
+L225: We compare our VAE with previous state-of-the-art methods, including Craftsman [cite62†34 ], Trellis [cite53†78 ], Dora [cite131†5 ], XCubes [cite57†59 ], Surf-D [cite73†84 ] and 3PSDF [cite75†6 ], with Surf-D and 3PSDF specially designed for open surfaces. We directly use the available pre-trained weights provided by these baselines, except for 3PSDF, which we re-implement and train on our dataset.
+L226: We only compare Surf-D on the Deepfashion3D dataset due to the lack of available pre-trained weights trained on large-scale datasets. For the generation results, we compare our method with InstantMesh [cite79†80 ], Direct3D [cite61†77 ], and TRELLIS [cite53†78 ].
+L227: #### Metrics.
+L228: 
+L229: We evaluate the reconstruction performance of VAE by using the commonly used metrics, including Chamfer Distance (CD) and F-score with thresholds of 0.01 and 0.001. The metrics are multiplied by $10^{4}$ and $10^{2}$, respectively. For generation results, four orthogonal views of normal maps for each shape are rendered for quantitative comparisons. We report the Fréchet Inception Distance (FID) [cite147†20 ] and Kernel Inception Distance (KID) [cite148†2 ].
+L230: ### 4.3 VAE Reconstruction Evaluation
+L231: We conduct extensive experiments to evaluate the quantitative results of VAE reconstruction from different methods in Table cite149†Tab. 1 . Since Dora [cite131†5 ] and Craftsman [cite62†34 ] are trained on watertight data, we separate the results exclusively on the watertight subset from the results computed over the entire dataset for the clear demonstration. These methods often perform poorly on non-watertight meshes, especially open surfaces like flowers.
+L232: Ours_{256} already outperforms other baselines in terms of CD and F-score. As the resolution increases, our method achieves even better, ultimately achieving a $\sim$82% reduction on CD and $\sim$88% increase in F-score. cite139†Fig. 4 demonstrate the superiority of our method for complex shapes, open surfaces, and interior structures. cite150†Tab. 2 compares our method with those designed for open surfaces on the Deepfashion3D [cite88†19 ] dataset, and our method still achieves the best performance among them.
+L233: cite151†Image: Refer to caption Figure 5: Qualitative comparison of VAE reconstruction quality between our method with different resolution and TRELLIS.
+L234: ### 4.4 Image to 3D Genration
+L235: 
+L236: We also validate the effectiveness of our SparseFlex VAE as a foundation model for generation. cite152†Tab. 4 validates the effectiveness of our generation. Visualizations are also demonstrated in cite153†Fig. 6 , which includes image-to-3D results using wild images. The generated shapes, which preserves sharp edges and fine details, highly match the given images and showcase the generalization of our method.
+L237: ### 4.5 Ablation Studies
+L238: 
+L239:  | Feed-Forward Time (ms)$\downarrow$  | GPU Memory Cost (MB)$\downarrow$
+L240: --- | --- | ---
+L241: Resolution  | $256^{3}$  | $512^{3}$  | $1024^{3}$  | $256^{3}$  | $512^{3}$  | $1024^{3}$
+L242: --- | --- | --- | --- | --- | --- | ---
+L243: Ours ($\alpha=0.1$)  | 333  | 620  | 1151  | 35515  | 40183  | 55441
+L244: Ours ($\alpha=0.3$)  | 357  | 697  | 1475  | 37403  | 45675  | 69991
+L245: w/o FSV  | 390  | 958  | OOM  | 40703  | 62029  | OOM
+L246: w/o FSV $\&$ Sp.  | 418  | OOM  | OOM  | 45505  | OOM  | OOM
+L247: Table 3: Feed-Forward time and GPU memory cost comparisons. $\alpha$ stands for the visibility ratio of voxels. ‘OOM’ means Out Of Memory and ‘FSV’ means frustum-aware sectional voxel training strategy. ‘Sp’ means SparseFlex.
+L248: 
+L249: Method  | InstantMesh [cite79†80 ]  | Direct3D [cite61†77 ]  | TRELLIS [cite53†78 ]  | Ours
+L250: --- | --- | --- | --- | ---
+L251: FID$\downarrow$  | 68.74  | 50.84  | 47.66  | 44.95
+L252: KID ($\times 10^{3}$)$\downarrow$  | 9.68  | 2.04  | 1.28  | 1.05
+L253: 
+L254: Table 4: Quantitative generation results on Toys4k.
+L255: #### Self-Pruning Upsampling.
+L256: 
+L257: cite150†Tab. 2 demonstrates that the self-pruning upsampling module plays an important role in the reconstruction quality of open-surface shapes, as it allows for effective pruning of voxels near open boundaries, enabling the reconstruction boundary to better align with input. Supplementary shows the visual effects of this module in detail.
+L258: #### SparseFlex and Frustum-aware Sectional Voxel Training.
+L259: To demonstrate the effectiveness of SparseFlex and frustum-aware sectional voxel training strategy, we evaluate the runtime of the feed-forward and GPU memory consumption with different settings, as shown in cite154†Tab. 3 . It demonstrates that SparseFlex effectively reduces the required GPU memory and runtime during network feed-forward. However, it is not efficient to scale to higher resolution.
+L260: The frustum-aware sectional voxel training strategy eliminates the reliance on the entire surface extraction during rendering, significantly reducing the memory requirements during training.
+L261: cite155†Image: Refer to caption Figure 6: Single image-to-3D generations with in-the-wild images.^{1} The geometry of generated assets accurately preserves sharp edges and fine details.
+L262: #### Sparse Voxel Resolutions.
+L263: 
+L264: ^{†}^{†}footnotetext: ^{1}The original images in cite153†Fig. 6 are sourced from various 3D generation platforms, benchmarks (such as Tripo3D, Rodin, Meshy, Trellis, etc.).
+L265: Higher resolution leads to better VAE reconstruction quality as shown in cite149†Tab. 1 . cite156†Fig. 5 illustrates the qualitative comparison of SparseFlex VAE with different resolutions, along with TRELLIS with a resolution of 256. Thanks to geometry encoding, our approach achieves better geometry reconstruction with the same resolution as TRELLIS. Benefiting from efficient training, more details of complex structures are revealed, such as the tank track in the first row, as the resolution increases.
+L266: ## 5 Conclusion
+L267: In this paper, we present SparseFlex, a new sparse-structured isosurface representation for differentiable mesh reconstruction with high resolution using rendering supervision, enabling the reconstruction of open surfaces. Based on SparseFlex, we propose a novel frustum-aware sectional voxel training strategy with adaptive frustum control to efficiently train SparseFlex VAE with high-resolution, dramatically reducing memory consumption.
+L268: This strategy also allows our method to reconstruction the interiors only using rendering loss. Finally, we develop the image-to-3D generation pipeline following TELLIS [cite53†78 ]. Experiments demonstrate state-of-the-art reconstruction accuracy and high-quality generation with open surfaces.
+L269: Limitations: Despite the strong performance of SparseFlex VAE in both reconstruction and image-to-3D generation, some limitations remain. 1) Open surface boundaries, while handled effectively by voxel pruning, may exhibit minor artifacts at lower resolutions. 2) High-resolution generation remains computationally demanding. 3) Enhanced control over the generation of interior structures is an area for future work.
+L270: ## References
+L271:   * [1] Tomas Akenine-Moller, Eric Haines, and Naty Hoffman. Real-time rendering. AK Peters/crc Press, 2019.
+L272:   * [2] Mikołaj Bińkowski, Danica J Sutherland, Michael Arbel, and Arthur Gretton. Demystifying mmd gans. arXiv preprint arXiv:1801.01401, 2018.
+L273:   * [3] Eric R Chan, Connor Z Lin, Matthew A Chan, Koki Nagano, Boxiao Pan, Shalini De Mello, Orazio Gallo, Leonidas J Guibas, Jonathan Tremblay, Sameh Khamis, et al. Efficient geometry-aware 3d generative adversarial networks. In CVPR, pages 16123–16133, 2022.
+L274:   * [4] Jen-Hao Rick Chang, Yuyang Wang, Miguel Angel Bautista Martin, Jiatao Gu, Josh Susskind, and Oncel Tuzel. 3d shape tokenization. arXiv preprint arXiv:2412.15618, 2024.
+

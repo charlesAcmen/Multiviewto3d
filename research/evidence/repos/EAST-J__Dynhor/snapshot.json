@@ -1,0 +1,32 @@
+{
+  "repo": "EAST-J/Dynhor",
+  "branch": "main",
+  "tree_sha": "75dcd716bc52ed8670c8759cdda99ef57316ab46",
+  "checked_at": "2026-10-19T02:54:58.801292+00:00",
+  "paths": [
+    ".gitignore",
+    "LICENSE",
+    "ObjTracker/configs/custom_shoes.yaml",
+    "ObjTracker/dino.py",
+    "ObjTracker/jointopt.py",
+    "ObjTracker/pose_initializtion.py",
+    "ObjTracker/requirements.txt",
+    "ObjTracker/run.py",
+    "ObjTracker/utils/__init__.py",
+    "ObjTracker/utils/bbox.py",
+    "ObjTracker/utils/camera.py",
+    "ObjTracker/utils/constants.py",
+    "ObjTracker/utils/geometry.py",
+    "ObjTracker/utils/losses.py",
+    "ObjTracker/utils/maskutils.py",
+    "ObjTracker/utils/render.py",
+    "ObjTracker/utils/visualizer.py",
+    "ObjTracker/vis.py",
+    "README.md",
+    "assets/kettle_res.gif",
+    "assets/shoes/1229a2e6e97e_A_basketball_shoes_.obj",
+    "assets/shoes/1229a2e6e97e_A_basketball_shoes_.obj.mtl",
+    "assets/shoes/1229a2e6e97e_A_basketball_shoes__texture_kd.jpg",
+    "assets/shoes_res.gif"
+  ]
+}

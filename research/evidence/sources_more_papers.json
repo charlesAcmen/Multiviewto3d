@@ -1,0 +1,22 @@
+[
+  {
+    "name": "objectcarver.pdf",
+    "url": "https://openreview.net/attachment?id=jHF0Xp9GVu&name=pdf"
+  },
+  {
+    "name": "inhand.pdf",
+    "url": "https://openaccess.thecvf.com/content/CVPR2023/papers/Hampali_In-Hand_3D_Object_Scanning_From_an_RGB_Sequence_CVPR_2023_paper.pdf"
+  },
+  {
+    "name": "neat.pdf",
+    "url": "https://openaccess.thecvf.com/content/CVPR2023/papers/Meng_NeAT_Learning_Neural_Implicit_Surfaces_With_Arbitrary_Topologies_From_Multi-View_CVPR_2023_paper.pdf"
+  },
+  {
+    "name": "bundlesdf.pdf",
+    "url": "https://openaccess.thecvf.com/content/CVPR2023/papers/Wen_BundleSDF_Neural_6-DoF_Tracking_and_3D_Reconstruction_of_Unknown_Objects_CVPR_2023_paper.pdf"
+  },
+  {
+    "name": "hold_supp.pdf",
+    "url": "https://openaccess.thecvf.com/content/CVPR2024/supplemental/Fan_HOLD_Category-agnostic_3D_CVPR_2024_supplemental.pdf"
+  }
+]

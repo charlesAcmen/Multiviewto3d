@@ -1,0 +1,1026 @@
+=== PAGE 1 ===
+Hand-held Object Reconstruction from RGB Video with Dynamic Interaction
+Shijian Jiang1 Qi Ye1,2* Rengan Xie3 Yuchi Huo3,4 Jiming Chen1
+1College of Control Science and Engineering, Zhejiang University
+2Key Lab of CS&AUS of Zhejiang Province
+3State Key Lab of CAD&CG, Zhejiang University 4Zhejiang Lab
+Time
+ Time
+Figure 1. Hand-held object reconstruction. Given a monocular RGB sequence of one or both hands manipulating a rigid object, our
+method accurately reconstructs the object even when it is poorly textured. Here, we present reconstructed surface normals and meshes
+from both lab-recorded and self-captured mobile phone videos.
+Abstract
+This work aims to reconstruct the 3D geometry of a rigid
+object manipulated by one or both hands using monocu-
+lar RGB video. Previous methods rely on Structure-from-
+Motion or hand priors to estimate relative motion between
+the object and camera, which typically assume textured ob-
+jects or single-hand interactions. To accurately recover
+object geometry in dynamic interactions, we incorporate
+priors from 3D generation model into object pose estima-
+tion and propose semantic consistency constraints to solve
+the challenge of shape and texture discrepancy between
+the generated priors and observations. The poses are ini-
+tialized, followed by joint optimization of the object poses
+and implicit neural representation. During optimization,
+a novel pose outlier voting strategy with inter-view consis-
+tency is proposed to correct large pose errors. Experiments
+on three datasets demonstrate that our method significantly
+outperforms the state-of-the-art in reconstruction quality
+for both single- and two-hand scenarios. Our project page:
+https://east-j.github.io/dynhor/
+1. Introduction
+Modeling the 3D shapes of objects has numerous applica-
+tions in fields such as virtual/augmented reality and robotic
+manipulation. Compared to the common approach of cap-
+*Corresponding author.
+turing static objects by manually moving a camera around
+them, rotating the object by hand in front of a camera or
+head-mounted device offers greater convenience for appli-
+cations involving dynamic hand-object interactions. This
+approach also enables reconstruction of the entire object
+surface, including the bottom part. This hand-held object
+reconstruction problem is the focus of the work.
+Recent hand-held object reconstruction methods gener-
+ally adopt multi-view reconstruction techniques [49, 54]
+to aggregate observations of in-hand objects across multi-
+ple rigid poses. The key challenge lies in accurately es-
+timating the relative motion between the object and the
+camera. Some works [18, 21, 42] assume the object is
+firmly grasped, tracking object motion with a hand pose
+tracker instead. This constrains hand-object movement and
+causes parts of the object to be consistently occluded by the
+hand, requiring post-processing or prior knowledge to ob-
+tain a complete surface, which limits reconstruction qual-
+ity and the potential application scenarios. Another line
+of method [9] uses Structure-from-Motion (SfM) to initial-
+ize object poses and refine them with hand priors. How-
+ever, as pointed out by [13, 43], SfM struggles in dynamic
+scenes. The solution is also limited to single-hand interac-
+tions due to using hand priors. To overcome these limita-
+tions, Hampali et al. [13] proposed an incremental training
+approach that divides sequences into trackable segments for
+joint shape and pose optimization. While effective for two-
+hand interactions, this approach struggles with texture-less
+This CVPR paper is the Open Access version, provided by the Computer Vision Foundation.
+Except for this watermark, it is identical to the accepted version;
+the final published version of the proceedings is available on IEEE Xplore.
+12220
+
+
+=== PAGE 2 ===
+or thin-structured objects and suffers from pose errors at
+segment boundaries, which degrade reconstruction quality.
+Towards enabling accurate reconstruction of a rigid ob-
+ject manipulated dynamically by one or both hands, we pro-
+pose a novel hand-held object reconstruction pipeline con-
+sisting of pose initialization with generated 3D object priors
+and joint optimization for object poses and reconstruction
+with pose outlier voting. For methods using hand priors, the
+high-DOF deformable hand itself is hard to resolve and not
+robust in challenging environments. Additionally, occlu-
+sions and dynamic objects make SfM-based methods brittle.
+Instead, recent 3D object generation models can compen-
+sate for occluded information for hand-held object recon-
+struction and eliminate the unstable high-DOF deformable
+part from the algorithm.
+For pose initialization, our approach generates object
+prior from the pre-trained 3D generation model to constrain
+the pose space, eliminating the need for SfM or hand priors.
+One major challenge of utilizing the generated 3D models is
+the shape and texture discrepancy from the ground truth: the
+discrepancy can cause registration methods that minimize
+the appearance difference between a frame and the rendered
+counterpart from the model to fail easily. We propose using
+semantic consistency to address the appearance discrepancy
+in shape and texture for pose initialization with generated
+3D models, e.g. the distance between caps of bottles in dif-
+ferent sizes, shapes, and textures in the semantic manifold
+should be smaller than the distance between the caps and
+the bottle bottoms. Semantic consistency also enables pose
+estimation for poorly textured and thin-structured objects.
+With the initialized poses, we jointly optimize the neural
+implicit representation of the object and the poses during the
+interaction. While joint optimization can refine the poses in
+many cases, it struggles with frames that have severe oc-
+clusions between the hand and the object due to significant
+deviations in the initial poses. These outlier poses lead to
+incorrect optimization and hinder pose self-correction. To
+address this problem, we propose a pose outlier voting strat-
+egy to check inter-view consistency with Sampson distance
+in the local windows of input sequences. The detected out-
+liers are reset with poses propagated from neighboring in-
+liers during optimization.
+We evaluate our method on three datasets: HO3D [12],
+HOD [18], and HOPE [47], which contain objects with di-
+verse geometries and textures interacting with one or both
+hands. The experiments show that our approach signifi-
+cantly outperforms state-of-the-art methods in terms of re-
+construction quality and demonstrate its real-world appli-
+cability through in-hand scanning with a mobile phone, as
+shown in Fig. 1. To summarize our contributions:
+• We propose a novel method for hand-held object re-
+construction under dynamic interaction with one or both
+hands using priors from pre-trained 3D generation model;
+• We propose a frame-to-model alignment method with se-
+mantic consistency to address the appearance discrepancy
+in shape and texture between the generated 3D priors and
+the input RGB sequences;
+• We propose a pose outlier voting strategy that leverages
+Sampson distance to check inter-frame pose consistency,
+ensuring both pose accuracy and reconstruction quality.
+2. Related Work
+Text-to-3D. Text-to-3D generation creates 3D assets from
+text prompts. Building on advances in text-to-image syn-
+thesis with diffusion models [16], DreamFusion [34] adapts
+image-based diffusion models [38] for 3D generation. Sub-
+sequent work has improved generation quality, training sta-
+bility, and speed [29, 31, 41, 44]. Another approach [17,
+22, 26, 52] uses Large Reconstruction Models to generate
+3D structures in a feed-forward manner. Building on these
+advances, we can generate high-quality meshes from text to
+guide coarse pose initialization.
+Multi-view 3D Reconstruction. Recovering 3D geome-
+try from multi-view images has a long history in computer
+vision and graphics. Traditional approaches typically uti-
+lize Structure-from-Motion (SfM) [39] to estimate camera
+poses, followed by multi-view stereo (MVS) to generate
+dense 3D reconstructions using explicit representations [3,
+11, 25]. Recently, neural implicit representations [32] have
+effectively modeled 3D geometry and appearance through
+volume rendering. NeuS [49] and V olSDF [54] enhance sur-
+face quality by replacing density fields with signed distance
+fields. While these methods achieve high-quality recon-
+structions, they rely on accurate pose estimates, typically
+obtained with COLMAP [40]. However, COLMAP as-
+sumes static scenes, making it unsuitable for scenarios like
+ours, where hand-object movement is independent of the
+background. Recent works [20, 28] address this by jointly
+optimizing poses and implicit representations with added
+supervision from correspondences [35, 46] or monocular
+depth [2], but they are effective only in forward-facing sce-
+narios. In contrast, we approach this problem by proposing
+effective initial poses, a critical factor for successful joint
+shape-pose optimization [50].
+Hand-held Object Reconstruction. Reconstructing 3D
+manipulated objects is challenging due to occlusions and
+object diversity. Several methods [5, 53] rely on ground-
+truth CAD models, simplifying the task to 6DoF pose es-
+timation. Other learning-based approaches attempt to di-
+rectly infer representations (e.g., mesh [6, 14], SDF [7, 23,
+56]) from a single RGB(D) image. Unfortunately, these
+methods suffer from poor generalization due to limited 3D
+hand-object data, and the reconstructed results often lack
+detail. CHORD [27] leverages categorical object priors for
+improvement but remains constrained to narrow category
+ranges. Recent advancements [9, 18, 21, 42, 57, 58] use
+12221
+
+
+=== PAGE 3 ===
+Input Videos
+“A head sculptures with 
+neck and wide shoulder”
+Text-to-3D
+…
+…
+Semantic 
+Consistency
+Object Pose Initialization
+Initial   
+Poses
+Joint Optimization
+3D Prior 𝑽𝑽
+Pose Outlier Voting
+3D Prior Generation
+𝒅𝒅𝑺𝑺𝑺𝑺𝑺𝑺𝑺𝑺𝑺𝑺𝑺𝑺𝑺𝑺
+Implicit Neural 
+Network Φ
+Pose Update Reconstruction
+…
+Figure 2. Overview of our framework. We first prompt ChatGPT to describe the hand-held object and generate a 3D textured mesh based
+on this textual description. Despite appearance discrepancies, we leverage semantic consistency to initialize the object pose by aligning the
+generated prior with the input images in the DINO feature space. We then use the coarse poses to learn an implicit object representation
+while simultaneously refining the poses. Finally, we introduce a pose outlier voting strategy to correct significantly erroneous poses.
+volume rendering to aggregate observations across multiple
+rigid poses, improving generalization without 3D supervi-
+sion. However, they still rely on COLMAP for pose initial-
+ization or assume a firm grasp, replacing object motion with
+hand motion, which hinders reconstruction of texture-less
+or thin objects and limits them to single-hand interactions.
+Recently, Swamy et al. [43] enhances COLMAP with a
+learning-based rigid transformation estimation framework.
+BundleSDF [51] can estimate object pose while simulta-
+neously reconstructing surfaces but requires depth infor-
+mation. In contrast, our method reconstructs high-quality
+objects during dynamic interactions involving one or two
+hands from just RGB sequences. Most related to our
+work, Hampali et al. [13] divides video sequences into short
+segments to incrementally estimate shape and pose, but this
+introduces pose errors at segment boundaries, degrading re-
+construction quality. Differently, our method jointly pro-
+duces accurate pose and shape estimations.
+3. Methods
+An overview of our method is illustrated in Fig. 2. Given
+a monocular RGB video sequence {Ik}k=1,...,N of a hand
+(or both hands) interacting with a rigid object, our goal is
+to reconstruct the target 3D object shape. The key idea is
+to use generated 3D meshes V as the priors to obtain the
+initial object poses ˆξ in the input frames for the reconstruc-
+tion. More specifically, we first generate V based on the
+text description. As shown in Fig. 2, although there may
+be discrepancy in shape and texture between the generated
+3D mesh and input and directly aligning them under the
+discrepancy is challenging, the generated mesh remains se-
+mantically similar and can help to constrain the pose space.
+To this end, we estimate object pose ˆξk for the kth frame
+by aligning the input image Ik with renderings in the foun-
+dational semantic-feature space FDIN O (Sec. 3.2). Sub-
+sequently, we use initial poses {ˆξk}k=1,...,N to jointly op-
+timize the SDF-based object implicit representation Φ and
+poses (Sec. 3.3). To reduce the impact of poses with signif-
+icant errors, we introduce a pose outlier voting strategy that
+detects and reinitializes these poses (Sec. 3.4), ultimately
+yielding higher-quality geometry and more accurate poses.
+3.1. Preliminaries: Object Representation
+We briefly introduce object representation using the Signed
+Distance Function (SDF) optimized via volume rendering.
+Following NeuS [49], we represent the geometry and ap-
+pearance using two MLP networks, a geometry network
+Φg : R3 → R and a color network Φc : R3 × S2 → R3.
+Given a 3D point x, the geometry network outputs the SDF
+value Φg(x), while the color network takes x and view di-
+rection d as inputs to produce the color Φc(x, d ).
+For each pixel, we sample a set of points along the cam-
+era ray r, denoted as {p(ti) = o + tid | ti ∈ [tn, t f]},
+where p(ti) are the sampled points, o is the camera position
+and tn, tf denote the bounds of the sample ray. Then we
+can get the rendered color as:
+ˆC(r) =
+X
+i
+i−1Y
+j=1
+(1 − αj)αiΦc(p(ti), d ), (1)
+where αi = 1 − exp(−
+R ti+1
+ti
+ρ(t)dt) denotes the opacity
+values. ρ(t) is the opacity density transferred from SDF as
+defined in [49], and the approximate surface depth [10] can
+12222
+
+
+=== PAGE 4 ===
+be interpolated from predicted SDF using:
+Φg(p(ti))ti+1 − Φg(p(ti+1))ti
+Φg(p(ti)) − Φg(p(ti+1)) , (2)
+where Φg(p(ti))Φg(p(ti+1)) < 0. The object representa-
+tion Φ can be optimized with photometric loss:
+Lcolor =
+X
+r
+∥ ˆC(r) − C(r)∥, (3)
+measuring the difference between the rendered color ˆC(r)
+and the input color C(r). The Eikonal loss and mask loss
+are applied to regularize the SDF, as proposed in NeuS:
+Leik = (||∇Φg||2 − 1)2, (4)
+Lmask =
+X
+r
+BCE (M(r), ˆW (r)), (5)
+where ˆW (r) = P
+i
+Qi−1
+j=1(1 − αj)αi represents the accu-
+mulated weight along the ray, and M(r) indicates the cor-
+responding object mask value.
+3.2. Pose Initialization via Generated 3D Prior and
+Semantic Consistency
+Generating a textured mesh V as the prior for pose initial-
+ization takes three steps: (1) We prompt ChatGPT [1] to
+describe the shape and appearance of the hand-held object
+using the first frame I1 1; (2) The response of ChatGPT
+serves as the input prompt for the Text-to-3D model, with
+Genie [45] as the generator, producing high-quality 3D tex-
+tured meshes; (3) We generateNV meshes and compute the
+3D-image similarity between each mesh and all frames us-
+ing OpenShape [30], selecting the mesh with the highest
+score as V . This approach enables fully automated mesh
+generation that is consistent with the input sequence.
+We then initialize the object pose in each frame of the
+input sequence. Given an RGB frame Ik and the gener-
+ated 3D textured mesh V , our goal is to estimate the object
+pose ˆξk for the frame, which transforms the object from its
+canonical space to the camera space. ˆξk includes 3D ro-
+tation Rk ∈ SO(3) and translation Tk ∈ R3. Previous
+works [5, 15] render 2D mask Mrender from the 3D mesh
+and compare it with the input object mask M for optimiza-
+tion:
+Lproj = ∥Mrender − M ∥. (6)
+However, these methods are sensitive to shape discrepan-
+cies and can lead to ambiguities, since multiple object poses
+may produce similar 2D masks, as shown in Fig. 3.
+To address these issues, we additionally align rendered
+images to input images using semantic feature similarity,
+1We can also use additional frames, repeat the following steps for each
+frame, and select the generated mesh with the highest score.
+GT Generated
+Prior 
+Input for 
+Registration 
+Pose
+Vis.
+Rendered Results from Generated 
+Prior after Convergence
+Mask & DINO Feat. Mask DINO Feat.
+Figure 3. Top: Due to shape discrepancy, relying solely on Lproj
+cause errors (upside down). Bottom: Incorporating semantic con-
+sistency ensures accurate alignment of 3D model with the input
+image, despite variations in shape and texture.
+which offers greater tolerance to variations in both shape
+and texture. Specifically, pre-trained foundational models
+such as DINO [33] have demonstrated their effectiveness as
+semantic feature extractors [61]. The pixel-wise semantic
+similarity between two images, Ii and Ij, can be measured
+as:
+Fcos(Ii, Ij) = < FDIN O(Ii), FDIN O(Ij) >
+∥FDIN O(Ii)∥2∥FDIN O(Ij)∥2
+, (7)
+where FDIN O represents the feature maps extracted by
+DINO. We then define the semantic difference between the
+rendered image DR(V, ˆξk) and the input image Ik as:
+Lsem = ∥1 − Fcos(Ik, DR (V, ˆξk))∥, (8)
+where DR(·) represents the differentiable texture rendering
+operation. We focus only on the object pixels. Combin-
+ing the Lproj and Lsem, we estimate the object pose ˆξk by
+minimizing the energy function via render-and-compare:
+min
+ˆξk
+λproj Lproj + λsemLsem. (9)
+The energy is optimized for each frame individually. As
+objects move continuously in the sequences, we utilize an
+additional term to the above energy and perform optimiza-
+tion for all the input frames to enforce temporal smoothness:
+N −1X
+k=1
+∥(Rk+1 − Rk)V + (Tk+1 − Tk)∥. (10)
+3.3. Joint Optimization with Geometric Constraints
+After obtaining the coarse poses ˆξ, we convert the video
+frames into calibrated multi-view images in object-centric
+coordinates for implicit representation optimization. How-
+ever, ˆξ are imperfect, which can directly degrade recon-
+struction quality. BARF [28] demonstrates that jointly op-
+timizing the implicit representation and camera poses miti-
+gates pose noise. Building on this, we treat camera poses as
+optimizable parameters for joint shape-pose optimization.
+12223
+
+
+=== PAGE 5 ===
+Additionally, we incorporate two types of on-surface ge-
+ometry cues, multi-view correspondence [46] and monoc-
+ular normal prior [59] as constraints in the optimization
+for further improvement. Specifically, given the predicted
+monocular normal ¯N, the normal consistency loss is for-
+mulated as:
+Lnormal =
+X
+r
+∥1 − ˆN(r)T ¯N(r)∥, (11)
+where the rendered normal ˆN(r) can be computed simi-
+larly to color using Eq. (1). Furthermore, for an image Ii
+and its randomly selected neighboring frame Ij, we extract
+dense correspondences using DKM [8], resulting in pairs of
+matching pixels pi ∈ Ii and pj ∈ Ij, along with a corre-
+spondence confidence wp. We define the multi-view corre-
+spondence objective as:
+Lcorres =
+X
+p
+wp∥pj − π(ξjξ−1
+i π−1(pi, ˆz(pi; Φ)))∥,
+(12)
+where π(·) represents the camera projection operator, and
+ˆz(·; Φ) is the predicted surface depth computed from the
+implicit representation Φ using Eq. (2). The overall geome-
+try constraints are then defined as:
+Lgeo = λnormalLnormal + λcorresLcorres. (13)
+Incorporating Lgeo facilitates joint optimization, im-
+proving both pose accuracy and reconstruction quality. The
+total loss for training the object’s implicit representation is:
+L = Lcolor + λeikLeik + λmaskLmask + Lgeo, (14)
+where Lcolor, Leik, and Lmask are defined in Sec. 3.1.
+3.4. Pose Outlier Voting with Sampson Distance
+Although the poses from initialization can be refined by
+joint optimization in many cases, severe occlusions between
+the hand and object can lead to significant deviations in the
+initial poses and these pose outliers result in erroneous joint
+optimization and hinder the refinement. To address this is-
+sue, we propose a pose outlier voting strategy to detect and
+correct the poses.
+One solution to find the outliers is to use per-frame ren-
+dering quality PSNR [19] to indicate inaccuracies in the
+corresponding camera pose ξk. However, we observe that
+inaccurate camera poses can also affect neighboring view-
+points due to the implicit network learning incorrect shape
+and texture in these regions, which can lead to erroneous
+assessments when using the PSNR of neighboring rendered
+images.
+Instead, we additionally utilize the previously obtained
+correspondence cues as a metric to help detect erroneous
+poses. Given pairs of 2D matched points pi ∈ Ii and pj ∈
+Ij, along with the fundamental matrix F obtained from the
+current camera poses ξi and ξj, we compute the Sampson
+distance:
+dSampson = |pT
+i F pj|
+|(piF )1 + (piF )2 + (F pj)1 + (F pj)2| ,
+(15)
+where (piF )1 and (piF )2 refer to the first and second
+components of the respective vectors. Unlike Lcorres
+(Eq. (12)), dSampson relies solely on current camera poses
+and 2D correspondences, bypassing depth inferred from the
+network to eliminate neighbor bias. Using this distance
+metric, we define the Sampson inconsistency rate β as the
+ratio of pairs where dSampson exceeds a threshold, relative
+to the total number of pairs.
+We then combine the Sampson inconsistency rate β and
+rendering quality PSNR as criteria to detect pose outliers,
+which are subsequently reset with poses propagated from
+neighboring inliers. Specifically, given a local window of
+2K neighboring frames centering on frame k, we com-
+pute PSNRk and the average of Sampson inconsistency rate
+mean({βk}) between frame k and the other frames in the
+window. If PSNR k is less than λ standard deviations be-
+low the mean rendering quality in the window: PSNR k ≤
+mean({PSNRi}k+K
+i=k−K) − λ · std({PSNRi}k+K
+i=k−K), and its
+average Sampson inconsistency rate mean({βk}) exceeds
+a certain threshold, the current poseξk is voted for low qual-
+ity. We then use spherical interpolation to reinitialize low-
+quality poses with nearby high-quality poses, leveraging the
+smooth nature of camera motion in videos. This pose outlier
+voting process helps prevent the shape-pose joint optimiza-
+tion from converging to sub-optimal solutions and supports
+self-correction.
+4. Experiments
+4.1. Implementation Details
+We use SAM-v2 [37] and StableNormal [55] to generate
+object masks and monocular normals for each frame. The
+number of generated meshes, NV , is set to 12, and ren-
+der the textured meshes using PyTorch3D [36]. Semantic
+features are extracted with DINO-ViT-B/14. We adopt the
+same architecture for the implicit network as NeuS [49].
+During training, we employ the Adam optimizer [24] with
+a learning rate of 5e − 4 and a cosine decay schedule with
+α = 0 .05. We sample 1024 rays per batch over a total
+of 120k iterations. At 20k iterations, we detect erroneous
+poses and reinitialize the pose and geometry MLPs. Train-
+ing for 100 frames takes about 1 hour for pose initialization
+and 8 hours for reconstruction on an NVIDIA RTX 3090
+GPU. Our implementation is based on PyTorch.
+12224
+
+
+=== PAGE 6 ===
+HO3D HOD
+CD (cm2)↓ F5 (%)↑ F10(%)↑ RPEt(cm)↓ RPEr(◦) ↓ ATE(m)↓ CD↓
+IHOI [56] 4.78 53.6 77.4 - - - 7.28
+HOLD [9] 1.82 63.6 85.1 4.143 5.974 0.265 1.27
+Ours 0.51 78.2 95.4 2.129 2.962 0.072 0.44
+Table 1. Comparison with SOTA hand-object reconstruction methods on
+HO3D and HOD datasets. We report the object reconstruction quality and pose
+accuracy. Chamfer Distance (CD) for HOD dataset is reported in unit size.
+CD (cm2)↓ F5 (%)↑ F10 (%)↑
+Hampali et al. [13] 1.4 57.4 79.9
+Ours 0.6 76.0 94.4
+Table 2. Comparison with SOTA in-hand scan-
+ning method on the same HO3D sequence as
+Hampali et al. [13].
+SfM fails
+Reference Image IHOI HOLD Ours GTGenerated Prior
+ HOLD Ours
+Figure 4. Qualitative Comparison with SOTA. We present reconstructed meshes from our method and baselines on HO3D [12] and
+HOD [18]. Pose trajectories on HO3D are also visualized, with ground-truth poses in red and predicted poses in blue. The color bar at the
+bottom indicates the relative rotation error, with lighter colors representing larger errors. Additionally, we show the generated prior used
+by our method. We yield more accurate results than other approaches, particularly for texture-less objects. Zoom in for details.
+4.2. Datasets
+We evaluate our method using three real-world datasets,
+each featuring different types of objects and interactions.
+HO3D [12]: This dataset consists of RGB videos of a hand
+interacting with YCB objects [4] with 3D annotations of the
+object and ground truth poses for each frame. We use the
+latest version, HO3D v3, and select two sequences per ob-
+ject for evaluation, one of which matches [13], resulting in
+a total of 20 sequences.
+HOD [18]: This dataset includes videos of hand-held ob-
+jects in motion, recorded by a static RGB camera with
+ground-truth meshes. Compared to HO3D, HOD features
+12225
+
+
+=== PAGE 7 ===
+objects with more complex shapes and challenging appear-
+ances, making it better suited for evaluating hand-held ob-
+ject reconstruction. We use 7 sequences to assess object
+reconstruction quality.
+HOPE [47]: This dataset contains videos of two hands ro-
+tating grocery objects. We use the latest version, HOPEv2,
+and select 8 sequences to evaluate our method for recon-
+structing objects manipulated by both hands.
+4.3. Metrics and Baselines
+Metrics. Following previous works [9, 18, 56], we use
+the Chamfer Distance (CD) to evaluate object reconstruc-
+tion quality and the F-score (in percentage) to assess local
+shape details. Specifically, we apply ICP to register the re-
+constructed mesh with the ground-truth. For ground-truth
+meshes with known scale ( e.g., HO3D, HOPE), we com-
+pute the Chamfer Distance in squared centimeters and the
+F-score at 5mm (F5) and 10mm (F10). For HOD, where
+the scale is unknown, meshes are normalized to unit size,
+and only the Chamfer Distance is reported. Additionally,
+we evaluate pose accuracy using standard visual odometry
+metrics [62], including Absolute Trajectory Error ( ATE)
+and Relative Pose Error ( RPE). ATE measures the differ-
+ence between estimated and ground truth camera positions,
+while RPE quantifies relative rotation (RPE r) and trans-
+lation (RPE t) errors between image pairs. We align the
+predicted trajectory with ground truth via Umeyama align-
+ment [48], reporting RPEr in degrees, RPEt in centimeters,
+and ATE in meters.
+Baselines. We compare our method with several existing
+approaches, including HOLD [9], the state-of-the-art for re-
+constructing hand-object interaction from monocular RGB
+video, which relies on SfM to initialize the object pose. As
+the method fails to reconstruct the banana and scissors in
+HO3D, HOLD evaluates reconstruction quality by adding
+noise to the ground truth poses for initialization on these
+two objects. The evaluation of HOLD in Tab. 1 adopts their
+settings. When calculating the pose trajectory metric, we
+exclude these parts. IHOI [56], a learning-based method
+for monocular-image in-hand object reconstruction, trained
+on sequences from HO3D and other datasets. We eval-
+uate IHOI on each frame of the sequence and report the
+average results. Hampali et al. [13] shares the same set-
+tings as ours. Without available code, we follow HOLD
+and compare against their released 3D models reconstructed
+by their method on the same HO3D sequences, excluding
+the banana and scissors due to their known failure cases.
+In two-hand scenarios, where no available prior work has
+addressed this challenge, we compare with BARF [28].
+For a fair comparison, we provide initialization poses from
+COLMAP, similar to HOLD but without hand refinement,
+referring to this baseline as COLMAP-BARF.
+CD (cm2)↓ F5 (%)↑ F10(%)↑
+COLMAP-BARF 0.96 62.5 79.8
+Ours 0.29 85.4 96.9
+Table 3. Comparison with baseline on two-hand interaction
+object reconstruction.
+GT
+Colmap-BARF OursReference Image
+ Generated Prior
+Figure 5. Qualitative results of two-handed object reconstruc-
+tion.
+4.4. State-of-the-art Comparsion
+Single-handed object reconstruction. We visualize the re-
+constructed object meshes and estimated pose trajectories
+in Fig. 4. The learning-based method IHOI can predict
+coarse shapes on seen data but lacks fine details. It also fails
+to reconstruct unseen objects from the HOD dataset, gen-
+erating invalid meshes. HOLD can accurately reconstruct
+geometry for objects with rich features, but its performance
+is significantly limited by its object pose initialization via
+SfM, as shown in the trajectories. For example, SfM gets
+confused by the similar appearance of the two sides of the
+drill, resulting in completely incorrect pose initialization.
+Additionally, SfM struggles to initialize correct poses for
+texture-less or thin objects, leading to poor-quality recon-
+struction results. In contrast, by incorporating the gener-
+ated prior, our method achieves superior geometry quality
+and accurate pose trajectories, even for challenging objects
+like scissors, the cat, and the rubber duck.
+This is consistent with quantitative results in Tab. 1. Our
+method significantly outperforms comparison methods on
+reconstruction metrics on both datasets, particularly on the
+HOD with more challenging objects. Moreover, our method
+also surpasses HOLD in pose accuracy, as its performance
+is constrained by SfM-based initialization. Tab. 2 compares
+our results with Hampali et al. [13] using the same HO3D
+sequences, showing a clear improvement in reconstruction
+quality. Detailed qualitative comparisons are provided in
+the supplementary material.
+Two-handed object reconstruction. In two-hand interac-
+tion settings, our method consistently outperforms the base-
+line, as shown in Tab. 3. The HOPE dataset mainly contains
+textured objects, reducing the difficulty of object pose ini-
+tialization with COLMAP and joint shape-pose optimiza-
+tion with BARF. However, as illustrated in Fig. 5, its results
+still contain numerous artifacts, whereas our reconstructed
+meshes demonstrate higher fidelity.
+12226
+
+
+=== PAGE 8 ===
+Pose initialization After joint optimization
+Prior-CD (cm2)↓ RPEt(cm)↓ RPEr(◦) ↓ ATE(m)↓ CD (cm2)↓ RPEt(cm)↓ RPEr(◦) ↓ ATE(m)↓
+GT 0.0 2.019 3.049 0.077 0.43 1.587 2.328 0.043
+GenGenie 1.05 3.629 4.738 0.115 0.51 2.129 2.962 0.072
+GenShap−e 1.67 4.178 5.519 0.153 1.11 2.931 4.108 0.122
+Table 4. The influence of different priors evaluated on HO3D.Left: pose initialization results. Prior-CD indicates the Chamfer Distance
+between generated priors and ground truth. Right: object reconstruction quality and pose accuracy after joint optimization.
+Pose Init.Lgeo Re-Init.CD (cm2)↓ RPEt(cm)↓ RPEr(◦)↓ ATE(m)↓
+- 7.948 10.250 0.385
+w/oLsem 4.17 5.686 8.277 0.246
+✓ 0.65 2.772 3.852 0.093
+✓ ✓ 0.62 2.443 3.347 0.084
+✓ ✓ PSNR 0.58 2.206 3.052 0.075
+✓ ✓ ✓ 0.51 2.129 2.962 0.072
+Table 5. Ablation study of joint shape-pose optimization on
+HO3D. w/o Lsem represents pose initialization relying solely on
+masks with generated priors. PSNR denotes the naive pose re-
+initialization strategy without dSampson.
+4.5. Ablation Studies
+The influence of different object priors. We show the
+influence of generated priors on pose initialization and the
+joint optimization results in Tab. 4. We utilize priors from
+two text-to-3D methods (Shap-e [22] and Genie [45]) and
+compute the Chamfer Distance between the generated pri-
+ors and ground-truth models ( Prior-CD), where a lower
+value indicates better similarity. We find that our method
+is robust to priors of varying quality and Lsem is crucial
+for pose initialization. GT refers to using ground-truth tem-
+plates for pose initialization, which sets the upper bound for
+our method. Although Shap-e [22] (Gen Shap−e) generates
+lower-quality priors compared to Genie [45] (Gen Genie),
+leading to larger pose initialization errors, it still provides a
+reasonable initialization. This is further evident in the final
+object reconstruction quality, where joint optimization with
+Shap-e initialization consistently outperforms the SOTA
+methods on HO3D (Tab. 1). Additionally, the object recon-
+struction quality with Genie initialization is nearly identical
+to that with GT initialization. These results demonstrate the
+effectiveness of our pose initialization and the robustness of
+our system to different generated priors.
+The effectiveness of components in joint shape-pose op-
+timization. We perform ablation studies by incrementally
+incorporating each component into the joint optimization
+process. As shown in Tab. 5, all the proposed techniques
+prove essential. The top row initializes all poses from
+the identity matrix and simply performs joint optimization,
+which is equivalent to BARF. This approach fails to learn
+both the correct pose and the object shape. In contrast,
+providing our pose initialization significantly improves the
+reconstruction quality. The table shows that Lsem is cru-
+cial for initialization, as omitting Lsem in pose initializa-
+tion severely degrades the overall reconstruction. Adding
+BARF +Pose Init. +ℒgeo +Re-Init.
+(a)
+(b)
+Pose outlier voting with PSNR Our Strategy
++Pose Init.
+w/o 𝓛𝓛𝒔𝒔𝒔𝒔𝒔𝒔
+Reference Image
+Figure 6. Ablation study. (a) Each proposed component effec-
+tively improves reconstruction quality. (b) Our voting strategy fur-
+ther reduces the impact of large pose errors and enhances recon-
+struction quality compared to relying solely on PSNR.
+Lgeo further improves overall pose accuracy and mesh qual-
+ity, although some artifacts persist. Visualizations in Fig. 6
+demonstrate that our voting strategy further refines surface
+quality. We also compare to the strategy that solely based on
+rendering quality. As indicated by the trajectory, our strat-
+egy results in smaller pose errors and achieves lower Cham-
+fer Distance (CD) values, highlighting its effectiveness.
+5. Conclusion
+In this paper, we present a method to reconstruct high-
+quality hand-held objects from monocular RGB video with
+dynamic interactions. The key insights include incorporat-
+ing generated 3D priors and enforcing semantic consistency
+for coarse pose initialization, which significantly supports
+the optimization of the object’s implicit representation. We
+also introduce a pose outlier voting strategy to further en-
+hance both reconstruction quality and pose accuracy. Our
+method consistently achieves state-of-the-art results across
+multiple datasets.
+Limitations and discussion: Despite promising results,
+our method has certain limitations. Its effectiveness de-
+pends on the quality of generated priors, which may not
+perform well with unique objects that current generators
+struggle to represent accurately. Additionally, DINO may
+produce nearly identical features for different sides of an
+object, leading to incorrect pose estimations in some cases.
+Advances in semantic correspondences [60] may help miti-
+gate this issue. Nevertheless, we believe this work provides
+valuable insights for reconstructing objects from unposed
+multi-view images.
+12227
+
+
+=== PAGE 9 ===
+Acknowledgment: This work was supported in part by
+NSFC under Grants (No. 62088101, 62233013, 62293511)
+and Key Research and Development Program of Zhe-
+jiang Province (No. 2025C01064 and No. 2025C01072).
+References
+[1] Josh Achiam, Steven Adler, Sandhini Agarwal, Lama Ah-
+mad, Ilge Akkaya, Florencia Leoni Aleman, Diogo Almeida,
+Janko Altenschmidt, Sam Altman, Shyamal Anadkat, et al.
+Gpt-4 technical report. arXiv preprint arXiv:2303.08774 ,
+2023. 4
+[2] Wenjing Bian, Zirui Wang, Kejie Li, Jia-Wang Bian, and
+Victor Adrian Prisacariu. Nope-nerf: Optimising neu-
+ral radiance field with no pose prior. In Proceedings of
+the IEEE/CVF Conference on Computer Vision and Pattern
+Recognition, pages 4160–4169, 2023. 2
+[3] Michael Bleyer, Christoph Rhemann, and Carsten Rother.
+Patchmatch stereo-stereo matching with slanted support win-
+dows. In Bmvc, pages 1–11, 2011. 2
+[4] Berk Calli, Arjun Singh, Aaron Walsman, Siddhartha Srini-
+vasa, Pieter Abbeel, and Aaron M Dollar. The ycb object
+and model set: Towards common benchmarks for manipula-
+tion research. In 2015 international conference on advanced
+robotics (ICAR), pages 510–517. IEEE, 2015. 6
+[5] Zhe Cao, Ilija Radosavovic, Angjoo Kanazawa, and Jitendra
+Malik. Reconstructing hand-object interactions in the wild.
+In Proceedings of the IEEE/CVF International Conference
+on Computer Vision, pages 12417–12426, 2021. 2, 4
+[6] Jiayi Chen, Mi Yan, Jiazhao Zhang, Yinzhen Xu, Xiaolong
+Li, Yijia Weng, Li Yi, Shuran Song, and He Wang. Tracking
+and reconstructing hand object interactions from point cloud
+sequences in the wild. arXiv preprint arXiv:2209.12009 ,
+2022. 2
+[7] Zerui Chen, Yana Hasson, Cordelia Schmid, and Ivan
+Laptev. Alignsdf: Pose-aligned signed distance fields for
+hand-object reconstruction. In Computer Vision–ECCV
+2022: 17th European Conference, Tel Aviv, Israel, October
+23–27, 2022, Proceedings, Part I, pages 231–248. Springer,
+2022. 2
+[8] Johan Edstedt, Ioannis Athanasiadis, M ˚arten Wadenb ¨ack,
+and Michael Felsberg. Dkm: Dense kernelized feature
+matching for geometry estimation. In Proceedings of the
+IEEE/CVF Conference on Computer Vision and Pattern
+Recognition, pages 17765–17775, 2023. 5
+[9] Zicong Fan, Maria Parelli, Maria Eleni Kadoglou, Xu
+Chen, Muhammed Kocabas, Michael J Black, and Otmar
+Hilliges. Hold: Category-agnostic 3d reconstruction of in-
+teracting hands and objects from video. In Proceedings of
+the IEEE/CVF Conference on Computer Vision and Pattern
+Recognition, pages 494–504, 2024. 1, 2, 6, 7
+[10] Qiancheng Fu, Qingshan Xu, Yew Soon Ong, and Wenbing
+Tao. Geo-neus: Geometry-consistent neural implicit surfaces
+learning for multi-view reconstruction. Advances in Neural
+Information Processing Systems, 35:3403–3416, 2022. 3
+[11] Yasutaka Furukawa and Jean Ponce. Accurate, dense, and
+robust multiview stereopsis. IEEE transactions on pattern
+analysis and machine intelligence , 32(8):1362–1376, 2009.
+2
+[12] Shreyas Hampali, Mahdi Rad, Markus Oberweger, and Vin-
+cent Lepetit. Honnotate: A method for 3d annotation of hand
+and object poses. In Proceedings of the IEEE/CVF con-
+ference on computer vision and pattern recognition , pages
+3196–3206, 2020. 2, 6
+[13] Shreyas Hampali, Tomas Hodan, Luan Tran, Lingni Ma,
+Cem Keskin, and Vincent Lepetit. In-hand 3d ob-
+ject scanning from an rgb sequence. arXiv preprint
+arXiv:2211.16193, 2022. 1, 3, 6, 7
+[14] Yana Hasson, Gul Varol, Dimitrios Tzionas, Igor Kale-
+vatykh, Michael J Black, Ivan Laptev, and Cordelia Schmid.
+Learning joint reconstruction of hands and manipulated ob-
+jects. In Proceedings of the IEEE/CVF conference on com-
+puter vision and pattern recognition , pages 11807–11816,
+2019. 2
+[15] Yana Hasson, G ¨ul Varol, Cordelia Schmid, and Ivan
+Laptev. Towards unconstrained joint hand-object reconstruc-
+tion from rgb videos. In 2021 International Conference on
+3D Vision (3DV), pages 659–668. IEEE, 2021. 4
+[16] Jonathan Ho, Ajay Jain, and Pieter Abbeel. Denoising dif-
+fusion probabilistic models. Advances in neural information
+processing systems, 33:6840–6851, 2020. 2
+[17] Yicong Hong, Kai Zhang, Jiuxiang Gu, Sai Bi, Yang Zhou,
+Difan Liu, Feng Liu, Kalyan Sunkavalli, Trung Bui, and Hao
+Tan. Lrm: Large reconstruction model for single image to
+3d. arXiv preprint arXiv:2311.04400, 2023. 2
+[18] Di Huang, Xiaopeng Ji, Xingyi He, Jiaming Sun, Tong He,
+Qing Shuai, Wanli Ouyang, and Xiaowei Zhou. Reconstruct-
+ing hand-held objects from monocular video. In SIGGRAPH
+Asia 2022 Conference Papers, pages 1–9, 2022. 1, 2, 6, 7
+[19] Quan Huynh-Thu and Mohammed Ghanbari. Scope of va-
+lidity of psnr in image/video quality assessment. Electronics
+letters, 44(13):800–801, 2008. 5
+[20] Yoonwoo Jeong, Seokjun Ahn, Christopher Choy, Anima
+Anandkumar, Minsu Cho, and Jaesik Park. Self-calibrating
+neural radiance fields. In Proceedings of the IEEE/CVF In-
+ternational Conference on Computer Vision , pages 5846–
+5854, 2021. 2
+[21] Shijian Jiang, Qi Ye, Rengan Xie, Yuchi Huo, Xiang Li,
+Yang Zhou, and Jiming Chen. In-hand 3d object recon-
+struction from a monocular rgb video. In Proceedings of
+the AAAI Conference on Artificial Intelligence, pages 2525–
+2533, 2024. 1, 2
+[22] Heewoo Jun and Alex Nichol. Shap-e: Generat-
+ing conditional 3d implicit functions. arXiv preprint
+arXiv:2305.02463, 2023. 2, 8
+[23] Korrawe Karunratanakul, Jinlong Yang, Yan Zhang,
+Michael J Black, Krikamol Muandet, and Siyu Tang. Grasp-
+ing field: Learning implicit representations for human
+grasps. In 2020 International Conference on 3D Vision
+(3DV), pages 333–344. IEEE, 2020. 2
+[24] Diederik P Kingma and Jimmy Ba. Adam: A method for
+stochastic optimization. arXiv preprint arXiv:1412.6980 ,
+2014. 5
+12228
+
+
+=== PAGE 10 ===
+[25] Kiriakos N Kutulakos and Steven M Seitz. A theory of shape
+by space carving. International journal of computer vision ,
+38:199–218, 2000. 2
+[26] Yushi Lan, Fangzhou Hong, Shuai Yang, Shangchen Zhou,
+Xuyi Meng, Bo Dai, Xingang Pan, and Chen Change Loy.
+Ln3diff: Scalable latent neural fields diffusion for speedy 3d
+generation. In European Conference on Computer Vision ,
+pages 112–130. Springer, 2025. 2
+[27] Kailin Li, Lixin Yang, Haoyu Zhen, Zenan Lin, Xinyu Zhan,
+Licheng Zhong, Jian Xu, Kejian Wu, and Cewu Lu. Chord:
+Category-level hand-held object reconstruction via shape de-
+formation. In Proceedings of the IEEE/CVF International
+Conference on Computer Vision, pages 9444–9454, 2023. 2
+[28] Chen-Hsuan Lin, Wei-Chiu Ma, Antonio Torralba, and Si-
+mon Lucey. Barf: Bundle-adjusting neural radiance fields.
+In Proceedings of the IEEE/CVF international conference on
+computer vision, pages 5741–5751, 2021. 2, 4, 7
+[29] Chen-Hsuan Lin, Jun Gao, Luming Tang, Towaki Takikawa,
+Xiaohui Zeng, Xun Huang, Karsten Kreis, Sanja Fidler,
+Ming-Yu Liu, and Tsung-Yi Lin. Magic3d: High-resolution
+text-to-3d content creation. In Proceedings of the IEEE/CVF
+Conference on Computer Vision and Pattern Recognition ,
+pages 300–309, 2023. 2
+[30] Minghua Liu, Ruoxi Shi, Kaiming Kuang, Yinhao Zhu, Xu-
+anlin Li, Shizhong Han, Hong Cai, Fatih Porikli, and Hao
+Su. Openshape: Scaling up 3d shape representation towards
+open-world understanding. Advances in neural information
+processing systems, 36, 2024. 4
+[31] Minghua Liu, Chao Xu, Haian Jin, Linghao Chen, Mukund
+Varma T, Zexiang Xu, and Hao Su. One-2-3-45: Any single
+image to 3d mesh in 45 seconds without per-shape optimiza-
+tion. Advances in Neural Information Processing Systems ,
+36, 2024. 2
+[32] Ben Mildenhall, Pratul P Srinivasan, Matthew Tancik,
+Jonathan T Barron, Ravi Ramamoorthi, and Ren Ng. Nerf:
+Representing scenes as neural radiance fields for view syn-
+thesis. Communications of the ACM , 65(1):99–106, 2021.
+2
+[33] Maxime Oquab, Timoth ´ee Darcet, Th ´eo Moutakanni, Huy
+V o, Marc Szafraniec, Vasil Khalidov, Pierre Fernandez,
+Daniel Haziza, Francisco Massa, Alaaeldin El-Nouby, et al.
+Dinov2: Learning robust visual features without supervision.
+arXiv preprint arXiv:2304.07193, 2023. 4
+[34] Ben Poole, Ajay Jain, Jonathan T Barron, and Ben Milden-
+hall. Dreamfusion: Text-to-3d using 2d diffusion. arXiv
+preprint arXiv:2209.14988, 2022. 2
+[35] Yunlong Ran, Yanxu Li, Qi Ye, Yuchi Huo, Zechun Bai, Ji-
+ahao Sun, and Jiming Chen. Ct-nerf: Incremental optimiz-
+ing neural radiance field and poses with complex trajectory.
+arXiv preprint arXiv:2404.13896, 2024. 2
+[36] Nikhila Ravi, Jeremy Reizenstein, David Novotny, Tay-
+lor Gordon, Wan-Yen Lo, Justin Johnson, and Georgia
+Gkioxari. Accelerating 3d deep learning with pytorch3d.
+arXiv:2007.08501, 2020. 5
+[37] Nikhila Ravi, Valentin Gabeur, Yuan-Ting Hu, Ronghang
+Hu, Chaitanya Ryali, Tengyu Ma, Haitham Khedr, Roman
+R¨adle, Chloe Rolland, Laura Gustafson, Eric Mintun, Junt-
+ing Pan, Kalyan Vasudev Alwala, Nicolas Carion, Chao-
+Yuan Wu, Ross Girshick, Piotr Doll´ar, and Christoph Feicht-
+enhofer. Sam 2: Segment anything in images and videos.
+arXiv preprint arXiv:2408.00714, 2024. 5
+[38] Robin Rombach, Andreas Blattmann, Dominik Lorenz,
+Patrick Esser, and Bj ¨orn Ommer. High-resolution image
+synthesis with latent diffusion models. In Proceedings of
+the IEEE/CVF conference on computer vision and pattern
+recognition, pages 10684–10695, 2022. 2
+[39] Johannes L Schonberger and Jan-Michael Frahm. Structure-
+from-motion revisited. In Proceedings of the IEEE con-
+ference on computer vision and pattern recognition , pages
+4104–4113, 2016. 2
+[40] Johannes L Sch ¨onberger, Enliang Zheng, Jan-Michael
+Frahm, and Marc Pollefeys. Pixelwise view selection for
+unstructured multi-view stereo. In Computer Vision–ECCV
+2016: 14th European Conference, Amsterdam, The Nether-
+lands, October 11-14, 2016, Proceedings, Part III 14, pages
+501–518. Springer, 2016. 2
+[41] Ruoxi Shi, Hansheng Chen, Zhuoyang Zhang, Minghua Liu,
+Chao Xu, Xinyue Wei, Linghao Chen, Chong Zeng, and Hao
+Su. Zero123++: a single image to consistent multi-view dif-
+fusion base model. arXiv preprint arXiv:2310.15110, 2023.
+2
+[42] Anilkumar Swamy, Vincent Leroy, Philippe Weinzaepfel,
+Fabien Baradel, Salma Galaaoui, Romain Br ´egier, Matthieu
+Armando, Jean-Sebastien Franco, and Gr ´egory Rogez.
+Showme: benchmarking object-agnostic hand-object 3d re-
+construction. In Proceedings of the IEEE/CVF International
+Conference on Computer Vision, pages 1935–1944, 2023. 1,
+2
+[43] Anilkumar Swamy, Vincent Leroy, Philippe Weinzaepfel,
+Fabien Baradel, Salma Galaaoui, Romain Br ´egier, Matthieu
+Armando, Jean-Sebastien Franco, and Gr ´egory Rogez.
+Showme: Robust object-agnostic hand-object 3d reconstruc-
+tion from rgb video. Computer Vision and Image Under-
+standing, 247:104073, 2024. 1, 3
+[44] Jiaxiang Tang, Jiawei Ren, Hang Zhou, Ziwei Liu, and Gang
+Zeng. Dreamgaussian: Generative gaussian splatting for effi-
+cient 3d content creation. arXiv preprint arXiv:2309.16653,
+2023. 2
+[45] Luma Team. Luma genie 1.0. https://www.luma-
+ai.com/luma-genie-1-0/ . 4, 8
+[46] Prune Truong, Marie-Julie Rakotosaona, Fabian Manhardt,
+and Federico Tombari. Sparf: Neural radiance fields from
+sparse and noisy poses. In Proceedings of the IEEE/CVF
+Conference on Computer Vision and Pattern Recognition ,
+pages 4190–4200, 2023. 2, 5
+[47] Stephen Tyree, Jonathan Tremblay, Thang To, Jia Cheng,
+Terry Mosier, Jeffrey Smith, and Stan Birchfield. 6-dof pose
+estimation of household objects for robotic manipulation:
+An accessible dataset and benchmark. In International Con-
+ference on Intelligent Robots and Systems (IROS) , 2022. 2,
+7
+[48] Shinji Umeyama. Least-squares estimation of transforma-
+tion parameters between two point patterns. IEEE Transac-
+tions on Pattern Analysis & Machine Intelligence , 13(04):
+376–380, 1991. 7
+12229
+
+
+=== PAGE 11 ===
+[49] Peng Wang, Lingjie Liu, Yuan Liu, Christian Theobalt, Taku
+Komura, and Wenping Wang. Neus: Learning neural implicit
+surfaces by volume rendering for multi-view reconstruction.
+arXiv preprint arXiv:2106.10689, 2021. 1, 2, 3, 5
+[50] Zirui Wang, Shangzhe Wu, Weidi Xie, Min Chen,
+and Victor Adrian Prisacariu. Nerf–: Neural radiance
+fields without known camera parameters. arXiv preprint
+arXiv:2102.07064, 2021. 2
+[51] Bowen Wen, Jonathan Tremblay, Valts Blukis, Stephen
+Tyree, Thomas M ¨uller, Alex Evans, Dieter Fox, Jan Kautz,
+and Stan Birchfield. Bundlesdf: Neural 6-dof tracking and
+3d reconstruction of unknown objects. In Proceedings of
+the IEEE/CVF Conference on Computer Vision and Pattern
+Recognition, pages 606–617, 2023. 3
+[52] Yinghao Xu, Zifan Shi, Wang Yifan, Hansheng Chen,
+Ceyuan Yang, Sida Peng, Yujun Shen, and Gordon Wet-
+zstein. Grm: Large gaussian reconstruction model for ef-
+ficient 3d reconstruction and generation. arXiv preprint
+arXiv:2403.14621, 2024. 2
+[53] Lixin Yang, Kailin Li, Xinyu Zhan, Jun Lv, Wenqiang Xu,
+Jiefeng Li, and Cewu Lu. Artiboost: Boosting articulated
+3d hand-object pose estimation via online exploration and
+synthesis. In Proceedings of the IEEE/CVF Conference
+on Computer Vision and Pattern Recognition , pages 2750–
+2760, 2022. 2
+[54] Lior Yariv, Jiatao Gu, Yoni Kasten, and Yaron Lipman. V ol-
+ume rendering of neural implicit surfaces. Advances in Neu-
+ral Information Processing Systems, 34:4805–4815, 2021. 1,
+2
+[55] Chongjie Ye, Lingteng Qiu, Xiaodong Gu, Qi Zuo,
+Yushuang Wu, Zilong Dong, Liefeng Bo, Yuliang Xiu,
+and Xiaoguang Han. Stablenormal: Reducing diffusion
+variance for stable and sharp normal. arXiv preprint
+arXiv:2406.16864, 2024. 5
+[56] Yufei Ye, Abhinav Gupta, and Shubham Tulsiani. What’s in
+your hands? 3d reconstruction of generic objects in hands.
+In Proceedings of the IEEE/CVF Conference on Computer
+Vision and Pattern Recognition, pages 3895–3905, 2022. 2,
+6, 7
+[57] Yufei Ye, Poorvi Hebbar, Abhinav Gupta, and Shubham Tul-
+siani. Diffusion-guided reconstruction of everyday hand-
+object interaction clips. In Proceedings of the IEEE/CVF
+International Conference on Computer Vision, pages 19717–
+19728, 2023. 2
+[58] Yufei Ye, Abhinav Gupta, Kris Kitani, and Shubham Tul-
+siani. G-hop: Generative hand-object prior for interac-
+tion reconstruction and grasp synthesis. In Proceedings of
+the IEEE/CVF Conference on Computer Vision and Pattern
+Recognition, pages 1911–1920, 2024. 2
+[59] Zehao Yu, Songyou Peng, Michael Niemeyer, Torsten Sat-
+tler, and Andreas Geiger. Monosdf: Exploring monocu-
+lar geometric cues for neural implicit surface reconstruc-
+tion. Advances in neural information processing systems ,
+35:25018–25032, 2022. 5
+[60] Junyi Zhang, Charles Herrmann, Junhwa Hur, Eric Chen,
+Varun Jampani, Deqing Sun, and Ming-Hsuan Yang. Telling
+left from right: Identifying geometry-aware semantic corre-
+spondence. In Proceedings of the IEEE/CVF Conference
+on Computer Vision and Pattern Recognition , pages 3076–
+3085, 2024. 8
+[61] Junyi Zhang, Charles Herrmann, Junhwa Hur, Luisa Pola-
+nia Cabrera, Varun Jampani, Deqing Sun, and Ming-Hsuan
+Yang. A tale of two features: Stable diffusion complements
+dino for zero-shot semantic correspondence. Advances in
+Neural Information Processing Systems, 36, 2024. 4
+[62] Zichao Zhang and Davide Scaramuzza. A tutorial on quan-
+titative trajectory evaluation for visual (-inertial) odometry.
+In 2018 IEEE/RSJ International Conference on Intelligent
+Robots and Systems (IROS), pages 7244–7251. IEEE, 2018.
+7
+12230

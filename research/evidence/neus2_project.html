@@ -1,0 +1,400 @@
+<!DOCTYPE html
+	PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+
+<head>
+	<title>NeuS2: Fast Learning of Neural Implicit Surfaces for Multi-view Reconstruction </title>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+
+	<!-- Meta tags for Zotero grab citation -->
+	<meta name="citation_title" content="NeuS2">
+	<meta name="citation_author" content="Wang, Yiming">
+	<meta name="citation_author" content="Han, Qin">
+	<meta name="citation_author" content="Habermann, Marc">
+	<meta name="citation_author" content="Daniilidis, Kostas">
+	<meta name="citation_author" content="Theobalt, Christian">
+	<meta name="citation_author" content="Liu, Lingjie">
+	<meta name="citation_publication_date" content="2022">
+	<meta name="citation_conference_title" content="Arxiv">
+	<!-- <meta name="citation_pdf_url" content="https://arxiv.org/pdf/2007.11571.pdf"> -->
+
+	<meta name="robots" content="index,follow">
+	<meta name="description"
+		content="
+		We propose a new method, NeuS2, for fast learning of neural surface representations from multi-view RGB input for both static and dynamic scenes.">
+	<link rel="author" href="https://19reborn.github.io/" />
+
+
+	<!-- Fonts and stuff -->
+	<link href='http://fonts.googleapis.com/css?family=Open+Sans:400italic,700italic,800italic,400,700,800'
+		rel='stylesheet' type='text/css'>
+	<link rel="stylesheet" type="text/css" href="css/project.css" media="screen" />
+	<link rel="stylesheet" type="text/css" media="screen" href="css/iconize.css" />
+	<script src="js/google-code-prettify/prettify.js"></script>
+</head>
+
+<body>
+	<div id="content">
+		<div id="content-inner">
+			<div class="section logos" style="text-align:center">
+				<a href="http://www.mpi-inf.mpg.de/home/" target="_blank"><IMG src="./logos/Logo_MPII.png" height="35"
+						border="0"></a></td>
+				<a href="/index.html" target="_blank"><IMG src="./logos/Logo_gvv.png" height="35" border="0"></a></td>
+				<a href="https://english.pku.edu.cn/" target="_blank"><IMG src="logos/logo_pku.png" height="40" border="0"></a>
+				<a href="https://www.upenn.edu/" target="_blank"><IMG src="logos/logo_upenn.png" height="40" border="0"></a>
+				</td>
+			</div>
+
+			<div class="section head">
+
+				<h1>NeuS2: Fast Learning of Neural Implicit Surfaces</h1> 
+				<h1>for Multi-view Reconstruction</h1> 
+
+				<div class="authors">
+					<a href="https://19reborn.github.io/" target="_blank">Yiming Wang</a><sup>* 1</sup>&#160;&#160;
+					<a target="_blank">Qin Han</a><sup>* 1</sup>&#160;&#160;
+					<!-- <a href="https://erinh47.github.io/" target="_blank">Qin Han</a><sup>* 1</sup>&#160;&#160; -->
+					<a href="https://people.mpi-inf.mpg.de/~mhaberma/" target="_blank">Marc Habermann</a><sup> 2</sup>&#160;&#160;
+					<a href="https://www.cis.upenn.edu/~kostas/" target="_blank">Kostas Daniilidis</a><sup> 3</sup>&#160;&#160;
+					<a href="http://people.mpi-inf.mpg.de/~theobalt/" target="_blank">Christian Theobalt</a><sup>2</sup>&#160;&#160;
+					<a href="https://lingjie0206.github.io/" target="_blank">Lingjie Liu</a><sup> 2,3</sup>&#160;&#160;
+				</div>
+
+				<div class="affiliations">
+					<sup>1</sup><a href="https://english.pku.edu.cn/" target="_blank">Peking University</a>&#160;&#160;
+					<sup>2</sup><a href="http://www.mpi-inf.mpg.de/home/" target="_blank">MPI Informatics, Saarland
+						Informatics Campus</a>&#160;&#160;
+					<sup>3</sup><a href="https://www.upenn.edu/" target="_blank">University of Pennsylvania</a>&#160;&#160;
+					</div>
+				<div class="venue">ICCV 2023</div>
+
+				<div class="section downloads">
+					<!--<h2>Downloads</h2>-->
+					<center>
+						<ul>
+							<li class="grid">
+								<div class="griditem">
+									<a href="https://arxiv.org/abs/2212.05231" target="_blank"
+										class="imageLink"><img src="images/pdf.png"></a><br />
+										<a href="https://arxiv.org/abs/2212.05231" target="_blank">Paper</a> 
+									<!--<a target="_blank"
+										class="imageLink"><img src="images/pdf.png"></a><br />
+										<a target="_blank">Paper</a>-->
+								</div>
+							</li>
+							<li class="grid">
+								<div class="griditem">
+									<!-- <a href="https://people.mpi-inf.mpg.de/~lliu/projects/NeuralActor/" target="_blank"
+										class="imageLink"><img src="images/data_ico.png"></a><br /> -->
+									<!-- <a href="https://github.com/lingjie0206/Neural_Actor_Main_Code"> Code (coming soon) </a> -->
+									<img src="images/data_ico.png"><br />
+									<a href="https://github.com/19reborn/NeuS2" target="_blank">code</a> 
+ 
+								</div>
+							</li>
+							<!-- <li class="grid"> 
+								<div class="griditem">
+									<a href="https://people.mpi-inf.mpg.de/~lliu/projects/NeuralActor/" target="_blank"
+										class="imageLink"><img src="images/data_ico.png"></a><br />
+									<a href="https://gvv-assets.mpi-inf.mpg.de/"> Data </a>
+								</div>
+							</li> -->
+							<!-- <li class="grid">
+								<div class="griditem">
+									<a href="https://www.dropbox.com/s/sqsnl07fpfhwge2/nips_talk_10m_V3.pptm?dl=0"
+										target="_blank" class="imageLink"><img
+											src="images/nips_talk_10m_V3.png"></a><br />
+									 <a href="https://www.dropbox.com/s/sqsnl07fpfhwge2/nips_talk_10m_V3.pptm?dl=0">
+										Slides (160 MB)</a> 
+
+								</div>
+							</li>-->
+						</ul>
+					</center>
+				</div>
+			</div>
+
+
+
+
+			<div class="section abstract">
+				<h2>Abstract</h2><br>
+				<div class="row" style="margin-bottom:5px">
+					<div class="col" style="text-align:center">
+						<img class="thumbnail" src="images/0_fig_teaser.jpg" style="width:60%; margin-bottom:20px">
+
+					</div>
+
+				</div>
+				<p>
+					Recent methods for neural surface representation and rendering, for example NeuS, have demonstrated remarkably high-quality reconstruction of static scenes. However, the training of NeuS takes an extremely long time (8~hours), which makes it almost impossible to apply them to dynamic scenes with thousands of frames. We propose a fast neural surface reconstruction approach, called <strong>NeuS2</strong>, which achieves two orders of magnitude improvement in terms of acceleration without compromising reconstruction quality. To accelerate the training process, we integrate multi-resolution hash encodings into a neural surface representation and implement our whole algorithm in CUDA. We also present a lightweight calculation of second-order derivatives tailored to our networks (i.e., ReLU-based MLPs), which achieves a factor two speed up. To further stabilize training, a progressive learning strategy is proposed to optimize multi-resolution hash encodings from coarse to fine. In addition, we extend our method for reconstructing dynamic scenes with an incremental training strategy. Our experiments on various datasets demonstrate that <strong>NeuS2</strong> significantly outperforms the state-of-the-arts in both surface reconstruction accuracy and training speed.
+				</p>
+			</div>
+
+			<div class="section abstract">
+				<h2>Full Video</h2><br>
+				<center>
+					<!-- <iframe width="640" height="360" src="https://vcai.mpi-inf.mpg.de/projects/NeuralActor/mp4/main_video_arxiv3.mp4" frameborder="0"; encrypted-media" allowfullscreen></iframe>  -->
+					<!-- <iframe width="640" height="360" src="https://www.youtube.com/embed/RFqPwH7QFEI" frameborder="0"
+						allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+						allowfullscreen></iframe>-->
+					<iframe src="./data/video.mp4" allow="autoplay; encrypted-media" webkitallowfullscreen="" mozallowfullscreen="" allowfullscreen="" width="560" height="315" frameborder="0"></iframe>
+					<!--<p style="font-size:11px; text-align:center">
+					Download Video: <a href="data/video.mp4" target="_blank">HD</a> (MP4, 111 MB)
+				</p>-->
+				</center>
+			</div>
+
+			<div class="section abstract">
+				<h2>Introduction</h2>
+				
+				<center>
+					<video width="80%" playsinline="" autoplay="autoplay" loop="loop" preload="" muted="">
+						<source src="clip/introduction_1.mp4" type="video/mp4">
+					</video>
+				</center>
+				<p>We propose NeuS2, a new method for fast training of highly-detailed neural implicit surfaces from multi-view 2D images, for both static and dynamic scenes.</p>
+
+				<center>
+					<video width="80%" playsinline="" autoplay="autoplay" loop="loop" preload="" muted="">
+						<source src="clip/intro_2.mp4" type="video/mp4">
+					</video>
+				</center>
+				<p>NeuS2 can achieve two orders of magnitude improvement in terms of acceleration without compromising reconstruction quality. </p>
+
+				<!-- <center>
+					<video width="80%" playsinline="" autoplay="autoplay" loop="loop" preload="" muted="">
+						<source src="clip/static_comparison_2.mp4" type="video/mp4">
+					</video>
+				</center>
+				<center>
+					<video width="80%" playsinline="" autoplay="autoplay" loop="loop" preload="" muted="">
+						<source src="clip/static_comparison_1.mp4" type="video/mp4">
+					</video>
+				</center>
+				<center>
+					<video width="80%" playsinline="" autoplay="autoplay" loop="loop" preload="" muted="">
+						<source src="clip/static_comparison_3.mp4" type="video/mp4">
+					</video>
+				</center>
+				<p>Compared to NeuS and Instant-NGP, our method achieves high-quality geometry and appearance reconstruction with fine-grained details for static scene. 
+				</p>
+				
+				<center>
+					<video width="80%" playsinline="" autoplay="autoplay" loop="loop" preload="" muted="">
+						<source src="clip/synshetic_dynamic_comparison_2.mp4" type="video/mp4">
+					</video>
+					<video width="80%" playsinline="" autoplay="autoplay" loop="loop" preload="" muted="">
+						<source src="clip/synshetic_dynamic_comparison_1.mp4" type="video/mp4">
+					</video>
+				</center>
+				<p>For the dynamic scene reconstruction, NeuS2 shows significantly improved novel view synthesis and geometry reconstruction results compared to D-NeRF.
+					Notably, NeuS2 only uses 40 seconds to train the first frame and 20 seconds for each subsequent frame;  On the contrary, D-NeRF needs an extremely long time to train such a sequence, about 20 hours.					
+				</p>
+
+				<center>
+					<video width="80%" playsinline="" autoplay="autoplay" loop="loop" preload="" muted="">
+						<source src="clip/real_dynamic_comparison_2.mp4" type="video/mp4">
+					</video>
+					<video width="80%" playsinline="" autoplay="autoplay" loop="loop" preload="" muted="">
+						<source src="clip/real_dynamic_comparison_1.mp4" type="video/mp4">
+					</video>
+				</center>
+				<p>For a long real scene sequence with 500 frames consisting of challenging movements, D-NeRF struggles to reconstruct it, and shows blurry rendering results and inaccurate geometry reconstruction, even though it is trained for about 50 hours. 
+					In contrast, NeuS2 produces photo-realistic renderings and detailed geometry, with only 20 seconds of training time per frame.
+					</p> -->
+
+				<!-- <center>
+					<video width="80%" playsinline="" autoplay="autoplay" loop="loop" preload="" muted="">
+						<source src="clip/interactive_demo.mp4" type="video/mp4">
+					</video>
+				</center>
+				<p>We also have an interactive  
+				</p> -->
+
+			</div>
+
+			<div class="section abstract">
+				<h2>Interactive Demo</h2><br>
+				<center>
+					<video width="80%" playsinline="" autoplay="autoplay" loop="loop" preload="" muted="">
+						<source src="clip/interactive_demo.mp4" type="video/mp4">
+					</video>
+				</center>
+			</div>
+			
+			<div class="section abstract">
+				<h2>Method</h2><br>
+				<div class="row" style="margin-bottom:5px">
+					<div class="col" style="text-align:center">
+						<img class="thumbnail" src="images/1_fig_method.jpg" style="width:90%; margin-bottom:20px">
+
+					</div>
+
+				</div>
+				<p>
+					<strong>(a) Static Scene Reconstruction:</strong> Given a 3D point $x$, we locate its corresponding voxels in a multi-resolution grid and for each voxel compute the interpolation of the feature vectors of eight vertexes, stored in a hash table. Based on the input of point x and hash-encoded features, our SDF network outputs the SDF value and geometry features, which are combined with viewing direction and further fed into our RGB network to generate the RGB value. Using efficient ray-marching strategy and SDF-based volumetric rendering approach, we then compute the pixel color to render image. Notably, during backward propagation the second-order derivates are efficiently computed using our CUDA implementation.
+				</p>
+				<p>
+					<strong>(b) Dynamic Scene Reconstruction:</strong> Given a sequence of multi-view images, we first construct the first frame following our static reconstruction method. For every subsequent frame, we predict its global transformation with respect to the previous frame and accumulate the transformation to convert it into the canonical space (i.e. the first frame). Then, we fine-tune the parameters of NeuS2 for incremental training to generate the rendered results.
+				</p>
+			</div>
+			
+			<div class="section abstract">
+				<h2>Results</h2><br>
+				<center>
+					<video width="80%" playsinline="" autoplay="autoplay" loop="loop" preload="" muted="">
+						<source src="clip/static_comparison_2.mp4" type="video/mp4">
+					</video>
+				</center>
+				<center>
+					<video width="80%" playsinline="" autoplay="autoplay" loop="loop" preload="" muted="">
+						<source src="clip/static_comparison_1.mp4" type="video/mp4">
+					</video>
+				</center>
+				<center>
+					<video width="80%" playsinline="" autoplay="autoplay" loop="loop" preload="" muted="">
+						<source src="clip/static_comparison_3.mp4" type="video/mp4">
+					</video>
+				</center>
+				<p>Compared to NeuS and Instant-NGP, our method achieves high-quality geometry and appearance reconstruction with fine-grained details for static scene. 
+				</p>
+				
+				<center>
+					<video width="80%" playsinline="" autoplay="autoplay" loop="loop" preload="" muted="">
+						<source src="clip/synshetic_dynamic_comparison_2.mp4" type="video/mp4">
+					</video>
+					<video width="80%" playsinline="" autoplay="autoplay" loop="loop" preload="" muted="">
+						<source src="clip/synshetic_dynamic_comparison_1.mp4" type="video/mp4">
+					</video>
+				</center>
+				<p>For the dynamic scene reconstruction, NeuS2 shows significantly improved novel view synthesis and geometry reconstruction results compared to D-NeRF.
+					Notably, NeuS2 only uses 40 seconds to train the first frame and 20 seconds for each subsequent frame;  On the contrary, D-NeRF needs an extremely long time to train such a sequence, about 20 hours.					
+				</p>
+
+				<center>
+					<video width="80%" playsinline="" autoplay="autoplay" loop="loop" preload="" muted="">
+						<source src="clip/real_dynamic_comparison_2.mp4" type="video/mp4">
+					</video>
+					<video width="80%" playsinline="" autoplay="autoplay" loop="loop" preload="" muted="">
+						<source src="clip/real_dynamic_comparison_1.mp4" type="video/mp4">
+					</video>
+				</center>
+				<p>For a long real scene sequence with 500 frames consisting of challenging movements, D-NeRF struggles to reconstruct it, and shows blurry rendering results and inaccurate geometry reconstruction, even though it is trained for about 50 hours. 
+					In contrast, NeuS2 produces photo-realistic renderings and detailed geometry, with only 20 seconds of training time per frame.
+					</p>
+					
+				<center>
+					<video width="80%" playsinline="" autoplay="autoplay" loop="loop" preload="" muted="">
+						<source src="clip/long_sequences_compressed.mp4" type="video/mp4">
+					</video>
+				</center>
+				<p>Here, we show a long real scene result containing 2000 frames.
+					NeuS2 can handle long sequence reconstruction without compromising quality.
+					</p>
+			</div>
+
+
+			
+			<!-- <div class="section abstract">
+				<h2>More Reenactment Results</h2>
+				<center>
+					<iframe width="640" height="360" src="mp4/deepcap_3.mp4" frameborder="0"; encrypted-media" allowfullscreen></iframe> 
+				</center>
+
+				<center>
+					 <iframe width="640" height="360" src="mp4/deepcap_1.mp4" frameborder="0"; encrypted-media" allowfullscreen></iframe>
+				</center>
+
+				<center>
+					<iframe width="640" height="360" src="mp4/deepcap_2.mp4" frameborder="0"; encrypted-media" allowfullscreen></iframe> 
+				</center>
+
+			
+				<center>
+					<iframe width="640" height="360" src="mp4/deepcap_multi.mp4" frameborder="0"; encrypted-media" allowfullscreen></iframe> 
+				</center>
+
+				<center>
+					<iframe width="640" height="360" src="mp4/aist_2.mp4" frameborder="0"; encrypted-media" allowfullscreen></iframe> 
+				</center>
+
+				<center>
+					 <iframe width="640" height="360" src="mp4/aist_3.mp4" frameborder="0"; encrypted-media" allowfullscreen></iframe> 
+				</center>
+
+				<center>
+					<iframe width="640" height="360" src="mp4/aist_4.mp4" frameborder="0"; encrypted-media" allowfullscreen></iframe> 
+				</center>
+
+				<center>
+					<iframe width="640" height="360" src="mp4/aist_5.mp4" frameborder="0"; encrypted-media" allowfullscreen></iframe> 
+				</center>
+
+				<center>
+					<iframe width="640" height="360" src="mp4/aist_6.mp4" frameborder="0"; encrypted-media" allowfullscreen></iframe> 
+				</center>
+
+				<center>
+					<iframe width="640" height="360" src="mp4/aist_7.mp4" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe> 
+				</center> -->
+
+			
+
+			
+
+			<div class="section abstract">
+				<h2>Citation</h2>
+				<div class="section bibtex" style="text-align:left; margin-left: 40px; margin-right: 40px">
+					<pre>
+@inproceedings{neus2,
+title={NeuS2: Fast Learning of Neural Implicit Surfaces for Multi-view Reconstruction}, 
+author={Wang, Yiming and Han, Qin and Habermann, Marc and Daniilidis, Kostas and Theobalt, Christian and Liu, Lingjie},
+year={2023},
+booktitle={Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)}
+}
+				</div>
+			</div>
+
+
+			<div class="section acknowledgments">
+				<h2>Acknowledgments</h2>
+				<p>
+					This work was funded by the ERC Consolidator Grant 4DRepLy (770784) and Lise Meitner Postdoctoral Fellowship.
+				</p>
+			</div>
+			
+			<div class="section acknowledgments">
+				<h2>Contact</h2>
+				<p>
+					For any questions, please get in touch with:
+			        <br>
+					Yiming Wang		
+					<br>
+					wym12416@pku.edu.cn
+					<br>
+					Lingjie Liu  
+					<br>
+					lingjie.liu@seas.upenn.edu
+					
+				</p>
+			</div>
+
+			<div class="section">
+				<hr class="smooth">
+				This page is <a href="http://www.zotero.org" target="_blank">Zotero</a> translator friendly. Page last updated 
+				<script type="text/javascript">
+					var m = "This page was last updated: " + document.lastModified;
+					var p = m.length - 9;
+					document.writeln("<left>");
+					document.write(m.substring(p, 0) + ".");
+					document.writeln("</left>");
+				</script>
+				<a href="https://www.mpi-inf.mpg.de/imprint/">Imprint</a>. <a href="https://data-protection.mpi-klsb.mpg.de/inf/gvv.mpi-inf.mpg.de/projects/">Data Protection</a>.
+			</div>
+		</div>
+	</div>
+</body>
+</html>

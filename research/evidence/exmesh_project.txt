@@ -1,0 +1,494 @@
+
+
+
+
+
+
+  
+
+  
+
+
+  
+ExMesh: Explicit Mesh Reconstruction with Topology Adaptation | CVPR 2026
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+
+  
+
+
+  
+
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.148.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.148.0/examples/jsm/"
+    }
+  }
+  
+
+
+  
+
+  {
+    "@context": "https://schema.org",
+    "@type": "ScholarlyArticle",
+    "headline": "ExMesh: Explicit Mesh Reconstruction with Topology Adaptation",
+    "description": "ExMesh directly reconstructs high-fidelity explicit meshes from multi-view images with adaptive topology and real-time UV maintenance.",
+    "author": [
+      {"@type": "Person", "name": "Chuanjin Fan"},
+      {"@type": "Person", "name": "Lifan Wu"},
+      {"@type": "Person", "name": "Wenjie Chang"},
+      {"@type": "Person", "name": "Hanzhi Chang"},
+      {"@type": "Person", "name": "Wenfei Yang"},
+      {"@type": "Person", "name": "Tianzhu Zhang"}
+    ],
+    "datePublished": "2026",
+    "isPartOf": {
+      "@type": "PublicationEvent",
+      "name": "IEEE/CVF Conference on Computer Vision and Pattern Recognition 2026"
+    },
+    "url": "https://fan-treasure.github.io/ExMesh_page.github.io/",
+    "image": "https://fan-treasure.github.io/ExMesh_page.github.io/static/images/teaser.jpg",
+    "sameAs": [
+      "https://arxiv.org/abs/2606.07288",
+      "https://github.com/Fan-Treasure/ExMesh",
+      "https://cvpr.thecvf.com/virtual/2026/poster/39611"
+    ],
+    "keywords": ["mesh reconstruction", "topology adaptation", "differentiable rendering", "computer vision"],
+    "isAccessibleForFree": true
+  }
+  
+
+
+
+
+
+  
+Skip to content
+
+
+  
+
+    
+
+      
+CVPR 2026
+
+      
+
+        
+
+ExMesh:
+ Explicit Mesh Reconstruction
+
+        
+with Topology Adaptation
+
+      
+
+
+      
+
+        
+Chuanjin Fan
+
+        
+Lifan Wu
+
+        
+Wenjie Chang
+
+        
+Hanzhi Chang
+
+        
+Wenfei Yang
+
+        
+Tianzhu Zhang
+
+      
+
+      
+University of Science and Technology of China
+
+
+      
+
+        
+
+          
+PDF
+
+          Paper
+        
+
+        
+
+          
+arXiv
+
+          Preprint
+        
+
+        
+
+          
+</>
+
+          Code
+        
+
+      
+
+    
+
+  
+
+
+  
+
+    
+
+      
+
+        
+
+          
+Coarse-to-Fine Mesh Reconstruction
+
+          
+Explore how ExMesh progressively refines a compact coarse mesh into a detailed reconstruction.
+
+        
+
+
+        
+
+          
+
+            
+
+3D
+
+
+            
+
+              
+
+
+              
+Preparing interactive viewer…
+
+            
+
+            
+
+              
+◐
+
+              
+Color
+
+            
+
+          
+
+
+          
+
+            
+
+              
+Reconstruction iteration
+
+              
+0
+
+              
+/
+
+              
+8000
+
+            
+
+            
+
+            
+
+              
+
+←
+ Prev
+
+              
+
+▶
+ 
+Play
+
+
+              
+Next 
+→
+
+
+            
+
+          
+
+          
+Drag to rotate · Scroll or pinch to zoom · Use the slider to inspect each stage
+
+        
+
+      
+
+    
+
+
+    
+
+      
+
+        
+ExMesh overview
+
+        
+
+          
+
+        
+
+        
+Driven by adaptive vertex splitting and merging together with decoupled geometry–texture optimization, ExMesh refines a coarse mesh into a high-fidelity result while balancing reconstruction quality, computational efficiency, and mesh conciseness.
+
+      
+
+    
+
+
+    
+
+      
+
+        
+
+          
+Abstract
+
+        
+
+        
+Reconstructing surface meshes from multi-view images has remained a core challenge in recent years. Most existing methods, whether implicit or explicit, depend on intermediate representations and post-processing steps like Marching Cubes or TSDF fusion, often resulting in artifacts and fragmented geometry. Directly optimizing explicit meshes is a promising approach. However, it presents two critical challenges: adaptively refining mesh topology to capture detail without introducing degenerate faces, and maintaining consistent UV coordinates for high-fidelity texturing as the mesh structure evolves.
+
+        
+To overcome these challenges, we propose ExMesh, a framework that directly optimizes explicit meshes by integrating differentiable optimization with discrete topology updates. We introduce adaptive vertex splitting and merging with real-time UV maintenance, enabling coarse-to-fine optimization while preserving geometric integrity. To our knowledge, ExMesh is the first framework that directly optimizes meshes with real-time adaptive topology refinement. Extensive experiments demonstrate a strong balance among accuracy, computational efficiency, and mesh conciseness.
+
+      
+
+    
+
+
+    
+
+      
+
+        
+
+          
+Method Overview
+
+        
+
+        
+
+          
+
+        
+
+        
+A differentiable renderer computes a photometric loss between the rendered and ground-truth images. Gradients drive two decoupled loops: geometry optimization for vertex positions and texture optimization for a separate UV map. Continuous optimization is interleaved with discrete vertex split and merge operations to adaptively refine topology.
+
+        
+
+          
+
+            
+
+            Your browser does not support embedded video.
+          
+
+        
+
+      
+
+    
+
+
+    
+
+      
+
+        
+
+          
+Results
+
+          
+Qualitative comparisons on multi-view reconstruction benchmarks.
+
+        
+
+        
+
+          
+
+        
+
+      
+
+    
+
+
+    
+
+      
+
+        
+
+          
+
+            
+BibTeX
+
+          
+
+          
+
+            
+⧉
+
+            
+Copy
+
+          
+
+        
+
+        
+
+@inproceedings{Fan2026ExMesh,
+  title     = {ExMesh: Explicit Mesh Reconstruction with Topology Adaptation},
+  author    = {Chuanjin Fan and Lifan Wu and Wenjie Chang and Hanzhi Chang and Wenfei Yang and Tianzhu Zhang},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year      = {2026}
+}
+
+
+      
+
+    
+
+  
+
+
+  
+
+    
+
+      
+ExMesh · CVPR 2026
+
+      
+Built from the 
+Academic Project Page Template
+, adapted from 
+Nerfies
+.
+
+    
+
+  
+
+
+  
+↑
+
+
+  
+
+
+  
+
+
+
+
+
+

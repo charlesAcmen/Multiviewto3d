@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>ExMesh: Explicit Mesh Reconstruction with Topology Adaptation | CVPR 2026</title>
+  <meta name="description" content="ExMesh directly reconstructs high-fidelity explicit meshes from multi-view images with adaptive topology and real-time UV maintenance.">
+  <meta name="keywords" content="ExMesh, mesh reconstruction, topology adaptation, multi-view reconstruction, differentiable rendering, computer vision, computer graphics">
+  <meta name="author" content="Chuanjin Fan, Lifan Wu, Wenjie Chang, Hanzhi Chang, Wenfei Yang, Tianzhu Zhang">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#f7f8fc">
+  <link rel="canonical" href="https://fan-treasure.github.io/ExMesh_page.github.io/">
+
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="ExMesh">
+  <meta property="og:title" content="ExMesh: Explicit Mesh Reconstruction with Topology Adaptation">
+  <meta property="og:description" content="Direct explicit mesh reconstruction with adaptive topology and real-time UV maintenance. CVPR 2026.">
+  <meta property="og:url" content="https://fan-treasure.github.io/ExMesh_page.github.io/">
+  <meta property="og:image" content="https://fan-treasure.github.io/ExMesh_page.github.io/static/images/teaser.jpg">
+  <meta property="og:image:width" content="1394">
+  <meta property="og:image:height" content="538">
+  <meta property="og:image:alt" content="Overview of the ExMesh coarse-to-fine mesh reconstruction pipeline">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="ExMesh: Explicit Mesh Reconstruction with Topology Adaptation">
+  <meta name="twitter:description" content="Direct explicit mesh reconstruction with adaptive topology and real-time UV maintenance. CVPR 2026.">
+  <meta name="twitter:image" content="https://fan-treasure.github.io/ExMesh_page.github.io/static/images/teaser.jpg">
+  <meta name="twitter:image:alt" content="Overview of the ExMesh coarse-to-fine mesh reconstruction pipeline">
+
+  <meta name="citation_title" content="ExMesh: Explicit Mesh Reconstruction with Topology Adaptation">
+  <meta name="citation_author" content="Fan, Chuanjin">
+  <meta name="citation_author" content="Wu, Lifan">
+  <meta name="citation_author" content="Chang, Wenjie">
+  <meta name="citation_author" content="Chang, Hanzhi">
+  <meta name="citation_author" content="Yang, Wenfei">
+  <meta name="citation_author" content="Zhang, Tianzhu">
+  <meta name="citation_publication_date" content="2026">
+  <meta name="citation_conference_title" content="IEEE/CVF Conference on Computer Vision and Pattern Recognition">
+  <meta name="citation_pdf_url" content="https://arxiv.org/pdf/2606.07288">
+  <meta name="citation_arxiv_id" content="2606.07288">
+
+  <link rel="stylesheet" href="static/css/index.css">
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.148.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.148.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "ScholarlyArticle",
+    "headline": "ExMesh: Explicit Mesh Reconstruction with Topology Adaptation",
+    "description": "ExMesh directly reconstructs high-fidelity explicit meshes from multi-view images with adaptive topology and real-time UV maintenance.",
+    "author": [
+      {"@type": "Person", "name": "Chuanjin Fan"},
+      {"@type": "Person", "name": "Lifan Wu"},
+      {"@type": "Person", "name": "Wenjie Chang"},
+      {"@type": "Person", "name": "Hanzhi Chang"},
+      {"@type": "Person", "name": "Wenfei Yang"},
+      {"@type": "Person", "name": "Tianzhu Zhang"}
+    ],
+    "datePublished": "2026",
+    "isPartOf": {
+      "@type": "PublicationEvent",
+      "name": "IEEE/CVF Conference on Computer Vision and Pattern Recognition 2026"
+    },
+    "url": "https://fan-treasure.github.io/ExMesh_page.github.io/",
+    "image": "https://fan-treasure.github.io/ExMesh_page.github.io/static/images/teaser.jpg",
+    "sameAs": [
+      "https://arxiv.org/abs/2606.07288",
+      "https://github.com/Fan-Treasure/ExMesh",
+      "https://cvpr.thecvf.com/virtual/2026/poster/39611"
+    ],
+    "keywords": ["mesh reconstruction", "topology adaptation", "differentiable rendering", "computer vision"],
+    "isAccessibleForFree": true
+  }
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+
+  <header class="paper-header">
+    <div class="container header-content">
+      <p class="venue-pill">CVPR 2026</p>
+      <h1 class="paper-title">
+        <span class="title-line"><span class="title-accent">ExMesh:</span> Explicit Mesh Reconstruction</span>
+        <span class="title-line">with Topology Adaptation</span>
+      </h1>
+
+      <p class="authors" aria-label="Authors">
+        <span>Chuanjin Fan</span>
+        <span>Lifan Wu</span>
+        <span>Wenjie Chang</span>
+        <span>Hanzhi Chang</span>
+        <span>Wenfei Yang</span>
+        <a href="http://staff.ustc.edu.cn/~tzzhang/" target="_blank" rel="noopener noreferrer">Tianzhu Zhang</a>
+      </p>
+      <p class="affiliation">University of Science and Technology of China</p>
+
+      <nav class="publication-links" aria-label="Publication resources">
+        <a class="resource-button" href="https://cvpr.thecvf.com/virtual/2026/poster/39611" target="_blank" rel="noopener noreferrer">
+          <span class="resource-icon" aria-hidden="true">PDF</span>
+          Paper
+        </a>
+        <a class="resource-button" href="https://arxiv.org/abs/2606.07288" target="_blank" rel="noopener noreferrer">
+          <span class="resource-icon resource-icon-text" aria-hidden="true">arXiv</span>
+          Preprint
+        </a>
+        <a class="resource-button" href="https://github.com/Fan-Treasure/ExMesh" target="_blank" rel="noopener noreferrer">
+          <span class="resource-icon" aria-hidden="true">&lt;/&gt;</span>
+          Code
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <section class="section viewer-section" aria-labelledby="viewer-title">
+      <div class="container">
+        <div class="section-heading">
+          <h2 id="viewer-title">Coarse-to-Fine Mesh Reconstruction</h2>
+          <p>Explore how ExMesh progressively refines a compact coarse mesh into a detailed reconstruction.</p>
+        </div>
+
+        <div class="viewer-card">
+          <div id="mesh-viewer" class="mesh-viewer" aria-label="Interactive 3D mesh viewer">
+            <div class="viewer-placeholder" aria-hidden="true"><span class="placeholder-mark">3D</span></div>
+            <div id="mesh-loading" class="mesh-loading" role="status" aria-live="polite">
+              <span class="loading-spinner" aria-hidden="true"></span>
+              <span class="loading-text">Preparing interactive viewer…</span>
+            </div>
+            <button id="toggle-color" class="viewer-mode-button" type="button" disabled>
+              <span aria-hidden="true">◐</span>
+              <span class="mode-label">Color</span>
+            </button>
+          </div>
+
+          <div class="viewer-controls">
+            <div class="iteration-row">
+              <label for="mesh-iteration">Reconstruction iteration</label>
+              <output id="iteration-label" for="mesh-iteration">0</output>
+              <span aria-hidden="true">/</span>
+              <span id="iteration-total">8000</span>
+            </div>
+            <input id="mesh-iteration" class="iteration-slider" type="range" min="0" max="5" step="1" value="0" disabled>
+            <div class="viewer-actions">
+              <button id="prev-iter" class="control-button" type="button" disabled><span aria-hidden="true">←</span> Prev</button>
+              <button id="auto-play" class="control-button control-button-primary" type="button" disabled><span class="play-icon" aria-hidden="true">▶</span> <span class="play-label">Play</span></button>
+              <button id="next-iter" class="control-button" type="button" disabled>Next <span aria-hidden="true">→</span></button>
+            </div>
+          </div>
+          <p class="viewer-help">Drag to rotate · Scroll or pinch to zoom · Use the slider to inspect each stage</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section teaser-section" aria-labelledby="overview-title">
+      <div class="container content-width">
+        <h2 id="overview-title" class="visually-hidden">ExMesh overview</h2>
+        <figure class="media-card teaser-card">
+          <img src="static/images/teaser.jpg" width="1394" height="538" loading="lazy" decoding="async" alt="ExMesh coarse-to-fine optimization from a sparse initial mesh to a detailed textured reconstruction">
+        </figure>
+        <p class="lead-copy">Driven by adaptive vertex splitting and merging together with decoupled geometry–texture optimization, ExMesh refines a coarse mesh into a high-fidelity result while balancing reconstruction quality, computational efficiency, and mesh conciseness.</p>
+      </div>
+    </section>
+
+    <section class="section section-tinted" aria-labelledby="abstract-title">
+      <div class="container reading-width">
+        <div class="section-heading section-heading-left">
+          <h2 id="abstract-title">Abstract</h2>
+        </div>
+        <p>Reconstructing surface meshes from multi-view images has remained a core challenge in recent years. Most existing methods, whether implicit or explicit, depend on intermediate representations and post-processing steps like Marching Cubes or TSDF fusion, often resulting in artifacts and fragmented geometry. Directly optimizing explicit meshes is a promising approach. However, it presents two critical challenges: adaptively refining mesh topology to capture detail without introducing degenerate faces, and maintaining consistent UV coordinates for high-fidelity texturing as the mesh structure evolves.</p>
+        <p>To overcome these challenges, we propose ExMesh, a framework that directly optimizes explicit meshes by integrating differentiable optimization with discrete topology updates. We introduce adaptive vertex splitting and merging with real-time UV maintenance, enabling coarse-to-fine optimization while preserving geometric integrity. To our knowledge, ExMesh is the first framework that directly optimizes meshes with real-time adaptive topology refinement. Extensive experiments demonstrate a strong balance among accuracy, computational efficiency, and mesh conciseness.</p>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="method-title">
+      <div class="container content-width">
+        <div class="section-heading">
+          <h2 id="method-title">Method Overview</h2>
+        </div>
+        <figure class="media-card">
+          <img src="static/images/method.jpg" width="1506" height="398" loading="lazy" decoding="async" alt="Diagram of the ExMesh geometry and texture optimization loops with adaptive vertex splitting and merging">
+        </figure>
+        <p class="figure-copy">A differentiable renderer computes a photometric loss between the rendered and ground-truth images. Gradients drive two decoupled loops: geometry optimization for vertex positions and texture optimization for a separate UV map. Continuous optimization is interleaved with discrete vertex split and merge operations to adaptively refine topology.</p>
+        <figure class="media-card animation-card">
+          <video id="method-animation" loop muted playsinline preload="none" poster="static/images/method.jpg" aria-label="Animation of ExMesh vertex split and merge operations">
+            <source src="static/images/vertex_split_merge_gif_1920_512.mp4" type="video/mp4">
+            Your browser does not support embedded video.
+          </video>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section section-tinted" aria-labelledby="results-title">
+      <div class="container content-width">
+        <div class="section-heading">
+          <h2 id="results-title">Results</h2>
+          <p>Qualitative comparisons on multi-view reconstruction benchmarks.</p>
+        </div>
+        <figure class="media-card results-card">
+          <img src="static/images/results.jpg" width="2400" height="1197" loading="lazy" decoding="async" alt="Qualitative ExMesh reconstruction results and comparisons on DTU scenes">
+        </figure>
+      </div>
+    </section>
+
+    <section class="section" id="bibtex" aria-labelledby="bibtex-title">
+      <div class="container reading-width">
+        <div class="bibtex-heading">
+          <div>
+            <h2 id="bibtex-title">BibTeX</h2>
+          </div>
+          <button id="copy-bibtex" class="copy-button" type="button" aria-label="Copy BibTeX citation">
+            <span aria-hidden="true">⧉</span>
+            <span class="copy-label">Copy</span>
+          </button>
+        </div>
+        <pre id="bibtex-code"><code>@inproceedings{Fan2026ExMesh,
+  title     = {ExMesh: Explicit Mesh Reconstruction with Topology Adaptation},
+  author    = {Chuanjin Fan and Lifan Wu and Wenjie Chang and Hanzhi Chang and Wenfei Yang and Tianzhu Zhang},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year      = {2026}
+}</code></pre>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-content">
+      <p>ExMesh · CVPR 2026</p>
+      <p>Built from the <a href="https://github.com/eliahuhorwitz/Academic-project-page-template" target="_blank" rel="noopener noreferrer">Academic Project Page Template</a>, adapted from <a href="https://nerfies.github.io" target="_blank" rel="noopener noreferrer">Nerfies</a>.</p>
+    </div>
+  </footer>
+
+  <button id="scroll-to-top" class="scroll-to-top" type="button" aria-label="Scroll to top">↑</button>
+
+  <script defer src="static/js/index.js"></script>
+  <script type="module" src="static/js/mesh-viewer.js"></script>
+</body>
+</html>

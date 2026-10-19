@@ -1,0 +1,50 @@
+[
+  {
+    "name": "code/neus2_base.json",
+    "url": "https://raw.githubusercontent.com/19reborn/NeuS2/main/configs/nerf/base.json"
+  },
+  {
+    "name": "code/neus2_run.py",
+    "url": "https://raw.githubusercontent.com/19reborn/NeuS2/main/scripts/run.py"
+  },
+  {
+    "name": "code/neus2_extract.cu",
+    "url": "https://raw.githubusercontent.com/19reborn/NeuS2/main/src/marching_cubes.cu"
+  },
+  {
+    "name": "code/neus2_loader.cu",
+    "url": "https://raw.githubusercontent.com/19reborn/NeuS2/main/src/nerf_loader.cu"
+  },
+  {
+    "name": "code/milo_default.yaml",
+    "url": "https://raw.githubusercontent.com/Anttwo/MILo/master/milo/configs/mesh/default.yaml"
+  },
+  {
+    "name": "code/milo_train.py",
+    "url": "https://raw.githubusercontent.com/Anttwo/MILo/master/milo/train.py"
+  },
+  {
+    "name": "code/neuralangelo_extract.py",
+    "url": "https://raw.githubusercontent.com/NVlabs/neuralangelo/main/projects/neuralangelo/scripts/extract_mesh.py"
+  },
+  {
+    "name": "code/dynhor_readme.md",
+    "url": "https://raw.githubusercontent.com/EAST-J/Dynhor/dev/README.md"
+  },
+  {
+    "name": "code/hold_setup.md",
+    "url": "https://raw.githubusercontent.com/zc-alexfan/hold/master/docs/setup.md"
+  },
+  {
+    "name": "code/hold_usage.md",
+    "url": "https://raw.githubusercontent.com/zc-alexfan/hold/master/docs/usage.md"
+  },
+  {
+    "name": "code/objectcarver_readme.md",
+    "url": "https://raw.githubusercontent.com/gemmechu/ObjectCarver/master/README.md"
+  },
+  {
+    "name": "code/debsdf_readme.md",
+    "url": "https://raw.githubusercontent.com/DavidXu-JJ/DebSDF/main/README.md"
+  }
+]

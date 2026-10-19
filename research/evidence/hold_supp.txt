@@ -1,0 +1,526 @@
+=== PAGE 1 ===
+HOLD: Category-agnostic 3D Reconstruction of
+Interacting Hands and Objects from Video
+Zicong Fan1,2 Maria Parelli1 Maria Eleni Kadoglou1
+Xu Chen1,2,† Muhammed Kocabas1,2 Michael J. Black2 Otmar Hilliges1
+1ETH Z¨urich, Switzerland 2Max Planck Institute for Intelligent Systems, T¨ubingen, Germany
+The SupMat, comprising this document and a video,
+along with our code and pre-trained models, is available
+here. We will post updates and project news on this link.
+A. Pose initialization
+Hand pose estimation: To initialize the hand pose, we
+first crop around the hand with the hand detector from
+100DoH [20], and use an off-the-shelf hand regressor,
+METRO [15], to infer the MANO hand mesh. We em-
+pirically found that METRO, a non-parametric method, is
+more stable in predicting hand global rotation during object
+occlusion than parametric regressors. To obtain MANO pa-
+rameters for each estimated hand mesh with MANO topol-
+ogy, we register the MANO model to the predicted meshes.
+For each frame in a sequence, we compute the volume of the
+watertight MANO mesh. We then fit a 1D Gaussian to the
+volumes for each sequence. We remove frames with vol-
+umes that are smaller than the mean of the Gaussian by 2.0
+standard deviations or more. Although it is a simple heuris-
+tic, we found this method to be effective in removing degen-
+erate hand mesh predictions because non-parametric hand
+regressors tend to produce meshes with small volumes in
+degenerate cases. We use spherical interpolation (SLERP)
+to infill MANO poses for missing frames. We experiment
+with 2D keypoint detectors such as OpenPose [21] and Me-
+diaPipe [25], but they are often very noisy during object
+occlusion. Instead, we project the initial hand mesh from
+METRO to image space and use this as the 2D keypoints.
+We found that the 2D keypoints from METRO are more sta-
+ble than those from existing 2D keypoint detectors.
+Object pose estimation: Since we focus on a category-
+agnostic setting, most existing object pose estimators [2]
+are unsuitable for our setting because they are designed
+for specific categories. To obtain initial object pose esti-
+mates of a novel object without category-level supervision,
+we perform structure-from-motion. We first obtain object
+masks from an off-the-shelf segmentation network [6]. The
+masks are used to create images with object-only pixels for
+structure-from-motion (SfM). We use HLoc [18] for SfM
+† Work done prior joining Google
+with SuperGlue [19] and SuperPoints [7] and 40 keypoints
+for multi-view matching. Since not all frames provide ob-
+ject poses, we use SLERP to infill missing frames. SfM
+often provides noisy point clouds. Therefore, we clean each
+point cloud automatically by first computing its median cen-
+ter, and the distance of the 20-percentile point to the center.
+Points that are outside of 1.5× of this distance are removed.
+We then subtract the point cloud with its median to center
+the point cloud around zero. After centering the point cloud,
+we normalize it such that the point cloud radius is1.0. Sim-
+ilar to hand 2D keypoints, we project 3D points from this
+point cloud to obtain 2D object keypoints for the alignment.
+Hand-object alignment: Since SfM only reconstructs the
+point clouds up to a scale, we need to figure out the scale
+(size factor) s of an object template. This is important be-
+cause the object’s translation, denoted as to, is calculated
+in the camera’s coordinate system assuming the scale is 1.
+Further, the hand’s translation, represented by th, is in the
+coordinate system of the cropped image around the hand.
+Both these poses need to be aligned to the same space and
+share the same camera intrinsic matrix K.
+To align the hand and the object in a shared camera co-
+ordinate space, we optimize an energy function,
+E =
+X
+t
+Eh + Eo + ωsmooth · Esmooth (1)
+where, for each frame, Eh is for the hand pose, Eo is for
+the object pose, and Esmooth is for smoothness, weighted by
+ωsmooth. In particular, a hand energy term is defined as
+Eh(Rh, th) = ω2D · ρ(Jt − ˆJt) (2)
+where Jt and ˆJt are the fitted and target 2D keypoints of the
+hand joints at frame t respectively. The object energy term
+is defined as Eo(s, Ro, to) =
+ω2D · ρ(Xt
+o − ˆXt
+o) + ωz ·
+−ct
+o,z
++
+1 + ωcontact
+ct
+h − ct
+o
+
+1
+(3)
+where Xt
+o and ˆXt
+o are the fitted and the target 2D projection
+of the object point cloud at frame t; ct
+o,z is the z-component
+
+=== PAGE 2 ===
+of the object mean vertex;∥·∥+
+1 is a clamped L1 loss that set
+negative values to 0.0; ch and co are the mean of the hand
+and object meshes. Finally, we have the smoothness term
+Esmooth (s, to , th ) =
+ct
+h − ct+1
+h
+2
+2 +
+ct
+o − ct+1
+o
+2
+2 .
+(4)
+For the 2D projection terms, following [1], we use the
+Geman-McClure [8] loss ρ(·) with a sigma of 25.0. We
+empirically choose ωsmooth and ωcontact to be 100.0, ω2D to
+be 1.0 and ωz to be 1000.0 for all sequences.
+Intuitively, the hand energy term enforces the fitted hand
+parameters to have the same 2D projection as the initial
+pose estimate; the object energy term enforces the same
+2D projection as the initial pose, avoids the object center
+(its z-component) to be behind the camera, and encourages
+hand-object proximity; the smoothness term maintains the
+smoothness of the overall sequence.
+We use a procedural fitting approach in which we first fit
+the hand with the hand energy term for 4000 iterations with
+a learning rate of 0.01, then we freeze the hand parameters
+and fit the object energy term for 15000 iterations with a
+learning rate of0.01. Finally, we allow both hand and object
+parameters to be optimized and jointly fit for all terms for
+3000 iterations with a learning rate of 0.001. The fitting
+often takes less than 5 minutes on a GeForce RTX 2080 Ti.
+B. Pose refinement
+As mentioned in the main paper, after training HOLD-Net,
+we have more accurate hand and object shapes. The goal
+of this pose refinement is to encourage better hand-object
+contact and better pixel alignment of the hand and the object
+by optimizing {th, Ro, to, β, s}.
+Occlusion-aware loss: To enhance the pixel-alignment of
+the hand and object meshes, we use Soft Rasterizer [16] to
+render hand and object amodal [14] masks Mh and Mo.
+Suppose the hand and object segmentation masks from off-
+the-shelf prediction are ˆSh and ˆSo. Following [26], we use
+an occlusion-aware mask loss
+Lmask=
+Mh − ˆSh
+ · (1− ˆSo) +
+Mo − ˆSo
+ · (1− ˆSh) (5)
+where all masks are binary masks (1 indicates the corre-
+sponding class of interest). Intuitively, when fitting the hand
+masks, with the term (1 − ˆSo), the loss will not penalize
+cases where the hand falls on the object part of the image,
+and vice versa when fitting the object masks.
+Refinement details: The total fitting loss Lfitting is defined
+as Lfitting = λcontactLcontact + λmaskLmask where we choose
+λcontact to be 100.0 and λmask to be 1000.0. Due to lim-
+ited GPU memory, for a given sequence, we uniformly sam-
+ple 51 frames, and fit frame-independent parameters (β, s)
+Object Sequence name
+bleach ABF12
+bleach ABF14
+potted meat GPMF12
+potted meat GPMF14
+cracker box MC1
+cracker box MC4
+power drill MDF12
+power drill MDF14
+sugar box ShSu10
+sugar box ShSu12
+mustard SM2
+mustard SM4
+mug SMu1
+mug SMu40
+banana BB12
+banana BB13
+scissors GSF12
+scissors GSF13
+Table A. HO3D sequences for hand-object reconstruction
+while allowing other parameters to change. Once (β, s) are
+initialized, we freeze them and optimize {th, Ro, to} with
+their initial values on a batch of 51 consecutive frames at
+a time to fit the entire sequence. We fit 300 iterations for
+each batch, which takes around 30 minutes to fit a sequence
+around 250 frames on an A100 GPU.
+C. Experiment details
+Inverted sphere parametrization: Our compositional im-
+plicit model consists of a hand model, an object model and
+a dynamic background. Following [9, 27], to query a point
+(x, y, z) with the background model, we first convert the
+point to a quadruple
+ρ(x′, y′, z′, 1/r) (6)
+where x′2 + y′2 + z′2 = 1 and r =
+p
+x2 + y2 + z2 > 1.
+This quadruple point format is used as the query point for
+the background model.
+Sampling on a ray: We use error-bounded sampling from
+V olSDF by iteratively upsampling z-values within a speci-
+fied error bound to obtain 3D points. Sampling stops when
+this error is below a threshold. The opacity values of these
+points are used to derive the final samples via inverse trans-
+form sampling. See V olSDF [24] for details.
+HO3D sequences: We use HO3D-v3 [10] to evaluate our
+method. The sequences can be found in Table A. Note that
+the 3D annotations are not used to train our method; we
+only use the RGB raw sequences for training.
+To compare with Hampali et al. [11] for in-hand object
+scanning, since there is no code released for this method, we
+
+=== PAGE 3 ===
+Object Sequence name
+35: power drill MDF14
+10: potted meat GPMF12
+3: cracker box MC1
+6: mustard SM2
+4: sugar box ShSu12
+21: bleach ABF14
+25: mug SMu1
+19: pitcher base AP13
+Table B. HO3D sequences for in-hand object scanning
+train HOLD on the same sequences (see Table B). For qual-
+itative results, Figure A shows a side-by-side comparison
+with Hampali et al. [11] and the ground-truth meshes. Since
+Hampali et al. [11] only release the reconstructed objects in
+point cloud format, the figure shows a dense point cloud
+comparison. Our method captures noticeably more fine-
+grained details and fewer artifacts compared to Hampali et
+al. [11], and the results are more similar to the ground-truth.
+For example, the bottle in the middle has hand-like artifacts
+in the Hampali et al. [11] result, while ours does not. This
+is due to our compositional implicit model that explicitly
+disentangles hands and objects in object reconstruction.
+Intrinsics: For evaluation purposes, we use intrinsics from
+HO3D; for in-the-wild experiments, we use intrinsics from
+SfM. Both intrinsics give reasonable results.
+Training details: We train each sequence with Adam [13]
+and randomly optimize 10 images from the sequence at each
+iteration with the loss:
+L = Lrgb + λsegmLsegm + λsdfLsdf
++ λsparseLsparse + λeikonalLeikonal. (7)
+During the first 30k iterations, λsegm linearly decays from
+1.1 to 0.1; λsdf linearly increases from 0.0 to 1.0. The
+eikonal loss weight λeikonal is always 0.00001 and the
+MANO prior loss λsdf is always 5.0. To avoid over-
+regularization, the eikonal loss is only applied when it is
+greater than 8e-4. We use an L1 loss for Lrgb, Lsdf, Lsparse,
+and L2 for Lsegm, Leikonal. We apply the sparsity loss Lsparse
+for the hand if a given ray’s closest distance to the hand
+mesh is beyond 1cm, and for the object if it is beyond 5cm.
+At each iteration, we sample 256 points around the hand
+surfaces with Gaussian noise using a standard deviation of
+0.008, as well as uniformly sample 51 points within a tight
+bounding box for hand or object; for the object, we use a
+standard deviation of 0.03. We choose these hyperparam-
+eters based on qualitative observations for all experiments.
+Since hyperparameter tuning is costly, we chose the them
+empirically and did not perform extensive tuning.
+Ours
+Hampali et al.
+Ground-truth
+Figure A. Comparison with Hampali et al. [11] for in-hand ob-
+ject scanning . Our method (top) has significantly more details
+and fewer artifacts compared to Hampali et al. [11] (middle) and
+our results more closely resemble the groundtruth (bottom).
+Loss terms MPJPE [ mm]↓ CDh[cm2]↓ mIoU [%]↑
+BL 22.1 41.9 83.9
+BL +Lmask 22.1 249.0 83.2
+BL +Lcontact 22.1 46.8 49.9
+BL +Lmask+Lcontact 22.1 9.1 86.3
+BL∗+Lmask+Lcontact 24.9 14.4 87.7
+BL∗+Lmask+Lcontact+Lbio 25.1 13.7 87.1
+Table C.Ablation on pose refinement losses. We ablate the effect
+of different refinement losses on a baseline (BL) before the refine-
+ment. * denotes allowing hand joint rotations to be optimizable.
+D. Additional experiments
+Ablation on fitting losses: We have experimented with dif-
+ferent setups for optimizing hand and object poses. How-
+ever, we found the current loss formulation is the most con-
+sistent in providing improvements. Table C shows the eval-
+uation metrics after fitting a baseline model with different
+loss combinations. To measure pixel-alignment for hands
+and objects, we use mean interaction-over-union (mIoU)
+between the ground-truth segmentation masks and the one
+rendered from the optimized hand and object models. For
+computational efficiency, here we randomly choose one se-
+quence for each object in HO3D to ablate this experiment.
+We see that, compared to mask-only, or contact-only fitting,
+fitting with both the mask loss Lmask and the contact loss
+Lmask is crucial for hand-relative object poses (see CD h)
+while maintaining the pixel alignment of hand and object
+meshes (see mIoU). In our experiments, we have explored
+the possibility of optimizing hand joints during the fitting
+procedure, as indicated in experiments marked with an as-
+terisk (∗). However, this approach has not yielded consis-
+tently improved results in terms of MPJPE. Additionally,
+we investigated the integration of a biomechanical loss, de-
+noted as Lbio from [23]. Contrary to expectations, this inte-
+gration resulted in a deterioration of MPJPE performance.
+Consequently, to maintain simplicity and efficacy, we have
+
+=== PAGE 4 ===
+Noise Level MPJPE [mm]↓ CD [cm2]↓ F10 [%]↑ CDh[cm2]↓
+GT 2.4/20.5 0.5/ 0.2 97.2/98.5 1.8 /16.1
+GT +1×noise 18.4/25.0 0.5/ 0.4 94.5/96.4 6.0 /17.1
+GT +2×noise 38.9/ 36.6 18.7/6.0 36.1/72.2 62.4/42.4
+Table D. Analyze the effect of noise in poses . Given different
+noise levels, we compare HOLD before or after pose refinement
+(left/right in the table). For all scenarios, object canonical geome-
+tries improve after pose refinement (see CD and F10).
+decided to adhere to our current loss formulation.
+Effect of noise in poses: Table D shows HOLD’s perfor-
+mance on HO3D sequences (1 sequence per object) with
+various noise levels. The ground-truth (GT) poses (includ-
+ing 6D object poses, hand joint angles, and 6D hand ro-
+tation and translation) were altered with rotational ( ϵrot)
+and translational (ϵtransl) noise from Gaussian distributions
+N (0, 8◦) and N (0, 16mm), termed “1× noise.” Post-noise,
+we refined the poses (see Sec. 3.3 main paper) and trained
+HOLD-Net with the new poses and assessed HOLD-Net’s
+effectiveness pre- and post-refinement (left/right in the ta-
+ble). Noise levels were also increased by 2×. Although
+in the main manuscript, we do not optimize hand poses
+(only hand translation), here we allow hand poses to be op-
+timized for completeness. We see that when the noise in
+the poses is relatively low (see GT and “ 1× noise”), pose
+refinement introduces error in hand poses (MPJPE). This
+makes sense as our pose refinement only fit hands into sil-
+houettes, which is insufficient for improving reasonably ac-
+curate poses. However, when the hand poses are extremely
+noisy (“2× noise”), the refinement improves the hand poses
+in MPJPE. This is also the case for the object’s reconstruc-
+tion in the hand coordinate (see CD h) as this metric mea-
+sures the spatial alignment between the hand and the object.
+Interestingly, across all noise levels, the canonical object ge-
+ometries always improve after pose refinement (see CD and
+F10) even when ground-truth is used.
+Results with random poses:For completeness and to facil-
+itate future comparison, Table E shows the results of banana
+and scissors sequences from Table A using random object
+poses. For the hand poses, we use the same hand pose es-
+timator in the main manuscript. For the object poses, we
+perturb ground-truth object rotations with Gaussian noise
+N (0, 32◦). Intuitively, with a95.5% chance, rotation noises
+fall within the confidence interval [−64◦, 64◦]. To be con-
+sistent with HOLD in the main manuscript, we freeze hand
+poses during energy-based fitting before the final training.
+Segmentation masks: For each sequence, we use SAM-
+Track [6] with point-prompting to obtain hand and object
+segmentation masks. Obtaining such masks takes around 30
+seconds for each sequence (requiring three to five clicks at
+the first frame). Table F shows that HOLD performs better
+with SAM-Track masks compared to STCN [5].
+Sequence MPJPE [mm] ↓ CD [cm2] ↓ F10 [%] ↑ CDh[cm2] ↓
+BB12 18.9 2.1 82.3 39.8
+BB13 19.4 2.1 82.4 77.5
+GSF12 21.1 6.7 67.8 46.2
+GSF13 19.1 6.9 65.4 63.2
+Average† 19.6 4.4 74.5 56.6
+Average‡ 23.2 1.3 91.6 21.4
+Table E. Random pose performance for banana and scissors .
+Results of HOLD using random poses: †Average across the ba-
+nana and scissors sequences; ‡Average across sequences here and
+in the main manuscript.
+MPJPE [mm]↓ CD [cm2] ↓ F10 [%] ↑ CDh[cm2] ↓
+STCN 25.0 0.5 95.6 19.0
+SAM-Track 24.8 0.3 97.5 14.1
+Table F. HOLD performance with different segm. masks.
+E. Discussion
+In this paper, we present the first method that recon-
+structs category-agnostic articulated hands and objects from
+monocular videos. Being the first step, ours is not perfect.
+First of all, during hand-object interaction, our hands
+could heavily occlude the object throughout the entire video
+sequence. Also, the object can have self-occlusion. Since
+our method relies on RGB supervision from video images,
+under-observed regions on the object could potential lead
+to artifacts due to the lack of proper regularization. As an
+example, Figure B (b) shows that artifact appears when the
+right side of the object handle is less observed in a video.
+However, there are huge advancement in text-to-3D diffu-
+sion priors [17] and they can be used to hallucinate under-
+observed object regions. Another aspect is to consider long-
+term interaction settings of the same object, which should
+provide a full observation of the object in interaction.
+Our model relies on detector-based SfM to provide initial
+object pose estimates. This is challenging for objects with
+uniform or poor texture and for objects with thin structures.
+As an example, Figure B (c) shows that SfM struggles with
+the two sides of the handle for a kettle sequence due to the
+poor texture and symmetric shape of this object, resulting
+in an handle-like artifact. Orthogonal to our work, recently
+there has been a surge of detector-free SfM models [12, 22]
+that can potentially provide object poses in such cases. Fur-
+ther, object poses can be noisy due to motion blur and hand-
+object occlusion, which could also lead to artifacts. One can
+explore correcting the object poses by enforcing a consis-
+tency loss with 2D keypoints between consecutive frames.
+Our method relies on the MANO skinning weights for
+deformation and uses K-nearest neighbours to find corre-
+spondences between the observation space and the canon-
+ical space. To further increase the realism of the learned
+hand model, one can try to learn the skinning weights from
+videos and leverage root-finding to find better correspon-
+
+=== PAGE 5 ===
+Figure B. Failure cases. In this sequence, the right side of the han-
+dle of the object has significantly fewer images for HOLD to learn
+its shape. The reconstruction has artifact in the under-observed
+side (see b). Also, SfM gets confused by the two sides of the ket-
+tle due to its simple texture and creates an artifacts on the object
+model (see c).
+dences between the observation space and the canonical
+space [3, 4]. Moreover, when some hand parts are under-
+observed, the hand model tends to have MANO-like shape
+for those regions. A direction would be to learn a prior on
+realistic hand texture and shape from in-the-lab hand scans.
+References
+[1] Federica Bogo, Angjoo Kanazawa, Christoph Lassner, Peter
+Gehler, Javier Romero, and Michael J. Black. Keep it SMPL:
+Automatic estimation of 3D human pose and shape from a
+single image. In European conference on computer vision .
+Springer, 2016. 2
+[2] Xu Chen, Zijian Dong, Jie Song, Andreas Geiger, and Otmar
+Hilliges. Category level object pose estimation via neural
+analysis-by-synthesis. In European Conference on Computer
+Vision (ECCV). Springer, 2020. 1
+[3] Xu Chen, Yufeng Zheng, Michael J Black, Otmar Hilliges,
+and Andreas Geiger. SNARF: Differentiable forward skin-
+ning for animating non-rigid neural implicit shapes. In In-
+ternational Conference on Computer Vision (ICCV) , 2021.
+5
+[4] Xu Chen, Tianjian Jiang, Jie Song, Max Rietmann, Andreas
+Geiger, Michael J. Black, and Otmar Hilliges. Fast-SNARF:
+A fast deformer for articulated neural fields.Transactions on
+Pattern Analysis and Machine Intelligence (TPAMI), 2023. 5
+[5] Ho Kei Cheng, Yu-Wing Tai, and Chi-Keung Tang. Rethink-
+ing space-time networks with improved memory coverage
+for efficient video object segmentation. In Conference on
+Neural Information Processing Systems (NeurIPS) , 2021. 4
+[6] Yangming Cheng, Liulei Li, Yuanyou Xu, Xiaodi Li,
+Zongxin Yang, Wenguan Wang, and Yi Yang. Segment and
+track anything. arXiv preprint arXiv:2305.06558, 2023. 1, 4
+[7] Daniel DeTone, Tomasz Malisiewicz, and Andrew Rabi-
+novich. Superpoint: Self-supervised interest point detection
+and description. In Computer Vision and Pattern Recognition
+Workshops (CVPRw), 2018. 1
+[8] Stuart Geman and Donald E. McClure. Bayesian image anal-
+ysis: An application to single photon emission tomography.
+Proceedings of the American Statistical Association, 1985. 2
+[9] Chen Guo, Tianjian Jiang, Xu Chen, Jie Song, and Otmar
+Hilliges. Vid2Avatar: 3D avatar reconstruction from videos
+in the wild via self-supervised scene decomposition. InCom-
+puter Vision and Pattern Recognition (CVPR), 2023. 2
+[10] Shreyas Hampali, Mahdi Rad, Markus Oberweger, and Vin-
+cent Lepetit. HOnnotate: A method for 3D annotation of
+hand and object poses. In Computer Vision and Pattern
+Recognition (CVPR), 2020. 2
+[11] Shreyas Hampali, Tomas Hodan, Luan Tran, Lingni Ma,
+Cem Keskin, and Vincent Lepetit. In-hand 3D object scan-
+ning from an RGB sequence. Computer Vision and Pattern
+Recognition (CVPR), 2023. 2, 3
+[12] Xingyi He, Jiaming Sun, Yifan Wang, Sida Peng, Qixing
+Huang, Hujun Bao, and Xiaowei Zhou. Detector-free struc-
+ture from motion. In arxiv, 2023. 4
+[13] Diederik P. Kingma and Jimmy Ba. Adam: A method
+for stochastic optimization. In International Conference on
+Learning Representations (ICLR), 2015. 3
+[14] Ke Li and Jitendra Malik. Amodal instance segmenta-
+tion. In European Conference on Computer Vision (ECCV) .
+Springer, 2016. 2
+[15] Kevin Lin, Lijuan Wang, and Zicheng Liu. End-to-end hu-
+man pose and mesh reconstruction with transformers. In
+Computer Vision and Pattern Recognition (CVPR), 2021. 1
+[16] Shichen Liu, Tianye Li, Weikai Chen, and Hao Li. Soft ras-
+terizer: A differentiable renderer for image-based 3D rea-
+soning. In International Conference on Computer Vision
+(ICCV), 2019. 2
+[17] Ben Poole, Ajay Jain, Jonathan T. Barron, and Ben Milden-
+hall. DreamFusion: Text-to-3D using 2D diffusion. Inter-
+national Conference on Learning Representations (ICLR) ,
+2022. 4
+[18] Paul-Edouard Sarlin, Cesar Cadena, Roland Siegwart, and
+Marcin Dymczyk. From coarse to fine: Robust hierarchical
+localization at large scale. In Computer Vision and Pattern
+Recognition (CVPR), 2019. 1
+[19] Paul-Edouard Sarlin, Daniel DeTone, Tomasz Malisiewicz,
+and Andrew Rabinovich. SuperGlue: Learning feature
+matching with graph neural networks. In Computer Vision
+and Pattern Recognition (CVPR), 2020. 1
+[20] Dandan Shan, Jiaqi Geng, Michelle Shu, and David F.
+Fouhey. Understanding human hands in contact at internet
+scale. In Computer Vision and Pattern Recognition (CVPR),
+2020. 1
+[21] Tomas Simon, Hanbyul Joo, Iain Matthews, and Yaser
+Sheikh. Hand keypoint detection in single images using mul-
+tiview bootstrapping. InComputer Vision and Pattern Recog-
+nition (CVPR), 2017. 1
+[22] Jiaming Sun, Zehong Shen, Yuang Wang, Hujun Bao, and
+Xiaowei Zhou. LoFTR: Detector-free local feature matching
+with transformers. Computer Vision and Pattern Recognition
+(CVPR), 2021. 4
+[23] Lixin Yang, Xinyu Zhan, Kailin Li, Wenqiang Xu, Jiefeng
+Li, and Cewu Lu. CPF: Learning a contact potential field to
+model the hand-object interaction. In International Confer-
+ence on Computer Vision (ICCV) , 2021. 3
+[24] Lior Yariv, Jiatao Gu, Yoni Kasten, and Yaron Lipman. V ol-
+ume rendering of neural implicit surfaces. In NeurIPS, 2021.
+2
+
+=== PAGE 6 ===
+[25] Fan Zhang, Valentin Bazarevsky, Andrey Vakunov, Andrei
+Tkachenka, George Sung, Chuo-Ling Chang, and Matthias
+Grundmann. MediaPipe hands: On-device real-time hand
+tracking. In Computer Vision and Pattern Recognition Work-
+shops (CVPRw), 2020. 1
+[26] Jason Y Zhang, Sam Pepose, Hanbyul Joo, Deva Ramanan,
+Jitendra Malik, and Angjoo Kanazawa. Perceiving 3D
+human-object spatial arrangements from a single image in
+the wild. In European Conference on Computer Vision
+(ECCV). Springer, 2020. 2
+[27] Kai Zhang, Gernot Riegler, Noah Snavely, and Vladlen
+Koltun. Nerf++: Analyzing and improving neural radiance
+fields. arXiv preprint arXiv:2010.07492, 2020. 2

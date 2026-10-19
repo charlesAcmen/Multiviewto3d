@@ -1,0 +1,172 @@
+MILo: Mesh-In-the-Loop Gaussian Splatting for Detailed and Efficient Surface Reconstruction (https://arxiv.org/html/2506.24096v2)
+citeturn22view0 [wordlim: 200] Crawled: today; Content type: text/html; Source: open({"ref_id":"https://arxiv.org/html/2506.24096v2","lineno":298}); Total lines: 570
+L225: (2)  |  | $$v_{n}=\frac{f_{k,i}p_{k^{\prime},j}-f_{k^{\prime},j}p_{k,i}}{f_{k,i}-f_{k^{\prime},j}}\>,$$  |
+L226: 
+L227: Note that this mesh extraction process allows gradients to flow from the vertices of the extracted mesh back to the Gaussians through (a) the learnable SDF values and (b) the coordinates of the Delaunay vertices, computed from the means and covariances of the Gaussians.
+L228: ## 5. Mesh-in-the-Loop Optimization
+L229: 
+L230: cite114†Image: Refer to caption cite115†Image: Refer to caption cite116†Image: Refer to caption L231: 
+L232: Figure 4. Examples of surface reconstruction results on the Tanks and Temples and MipNeRF 360 datasets. Our method produces meshes with clean surfaces and very fine details, while being lighter than previous methods (Stump: 320MB, Garden: 301MB, Barn: 313MB)
+L233: We build on top of previous works (cite70†Kerbl et al., 2023 ; cite54†Huang et al., 2024 ; cite55†Yu et al., 2024 ; cite56†Zhang et al., 2024 ), whose optimization is based on successive iterations of rendering the scene with 3D Gaussians and comparing the resulting image to the target image from the captured dataset.
+L234: Our approach can be plugged into any Gaussian-based method able to render depth maps and normal maps through differentiable rasterization (cite54†Huang et al., 2024 ; cite55†Yu et al., 2024 ; cite56†Zhang et al., 2024 ). Please note that depending on the method, the definition of the rendered depth and normal maps may differ.
+L235: A key advantage of our approach lies in the ability to extract a triangle mesh during optimization, perform any differentiable operation on the surface, and backpropagate the resulting gradients to the Gaussians. To couple the two representations, we rely on differentiable mesh rendering: we directly compare depth and normal maps rendered from both representations to enforce geometric consistency between the Gaussians and the extracted surface.
+L236: Below, we describe the different loss functions involved during optimization.
+L237: ### 5.1. Volumetric rendering
+L238: 
+L239: To optimize the Gaussians, we rely on the same volumetric rendering loss ${\mathcal{}L}_{\text{vol}}$ as (cite55†Yu et al., 2024 ; cite54†Huang et al., 2024 ; cite56†Zhang et al., 2024 ), which consists of two photometric terms and a regularization term:
+L240: 
+L241: (3)  |  | $${\mathcal{}L}_{\text{vol}}=(1-\lambda_{\text{RGB}}){\mathcal{}L}_{1}+\lambda_{\text{RGB}}{\mathcal{}L}_{\text{D-SSIM}}+\lambda_{\text{N}}{\mathcal{}L}_{\text{N}}\>,$$  |
+L242: where ${\mathcal{}L}_{1}$ is the L1 loss, ${\mathcal{}L}_{\text{D-SSIM}}$ is a D-SSIM term and ${\mathcal{}L}_{\text{N}}$ is a normal consistency loss defined as the following sum over pixels $i$:
+L243: 
+L244: (4)  |  | $${\mathcal{}L}_{\text{N}}=\sum_{i}\left(1-\textbf{N}(i)\cdot\tilde{\textbf{N}}(i)\right)\>,$$  |
+L245: where $\textbf{N}_{i}$ is the expected normal at pixel $i$ computed from volumetric rendering, and $\tilde{\textbf{N}}_{i}$ is the normal direction at pixel $i$ obtained by applying finite difference on the rendered depth map, following (cite54†Huang et al., 2024 ; cite55†Yu et al., 2024 ; cite56†Zhang et al., 2024 ). This term encourages Gaussians to align with their neighbors and drastically reduces the noise in the rendered depth and normal maps.
+L246: ### 5.2. Volume-to-Surface Consistency
+L247: 
+L248: To enforce consistency between the geometry encoded in (a) the Gaussians as a volumetric representation and (b) the extracted surface mesh, we introduce the following loss:
+L249: 
+L250: (5)  |  | $${\mathcal{}L}_{\text{mesh}}=\lambda_{\text{MD}}{\mathcal{}L}_{\text{MD}}+\lambda_{\text{MN}}{\mathcal{}L}_{\text{MN}}\>.$$  |
+L251: 
+L252: Here ${\mathcal{}L}_{\text{MD}}$ is a depth consistency loss defined as follows:
+L253: (6)  |  | $${\mathcal{}L}_{\text{MD}}=\sum_{i}\log\left(1+|D(i)-D_{\text{M}}(i)|\right)\>,$$  |
+L254: 
+L255: with $D$ the depth map rendered from the Gaussians and $D_{\text{M}}$ the depth map rendered from the mesh. The normal consistency loss ${\mathcal{}L}_{\text{MN}}$ is defined as
+L256: 
+L257: (7)  |  | $${\mathcal{}L}_{\text{MN}}=\sum_{i}\left(1-\tilde{\textbf{N}}(i)\cdot N_{\text{M}}(i)\right)\>,$$  |
+L258: 
+L259: with $N_{\text{M}}(i)$ the normal of the face of the mesh rasterized at pixel $i$.
+L260: ### 5.3. Regularization
+L261: 
+L262: Despite their effectiveness, the previous losses are not sufficient for reconstructing optimal meshes, and two key challenges remain.
+L263: #### Erosion.
+L264: 
+L265: During optimization, if all SDF values inside a tetrahedron become positive, fine details of the geometry can be eroded or even lost. Due to the sharp nature of mesh rasterization, it becomes extremely difficult for the representation to recover this geometry, even with antialiasing applied to mesh renderings. Once a region is eroded, the gradient signal becomes weak or non-existent, making it challenging for optimization to restore the missing surface.
+L266: To address this issue, we propose a regularization term ${\mathcal{}L}_{\text{erosion}}$ that encourages geometry to be preserved:
+L267: 
+L268: (8)  |  | $${\mathcal{}L}_{\text{erosion}}=\sum_{g\in G_{\text{Del}}}\max(0,f_{\mu_{g}})\>,$$  |
+L269: where $G_{\text{Del}}$ is the set of Gaussians sampled for the Delaunay triangulation and $f_{\mu_{g}}$ is the SDF value of the center of the $g$-th Gaussian. As mentioned in Section cite12†4 , the centers of all Gaussians sampled for the triangulation are used as Delaunay vertices: this regularization term aims to include the centers of these Gaussians inside the surface by encouraging their SDF values to become negative, preventing erosion in all areas where at least one Gaussian has been sampled.
+L270: ${\mathcal{}L}_{\text{erosion}}$ is applied only to the centers of selected Gaussian pivots, not to all tetrahedral vertices, preventing collapse. This ensures regularization is effective without harming mesh integrity.
+L271: #### Interior artifacts.
+L272: 
+L273: The previous losses do not provide adequate constraints on occluded parts of the scene. As a consequence, the interior of the surface mesh, which does not receive proper supervision through depth and normal renderings, tends to produce chaotic structures and internal cavities, rather than being empty as it should be. These interior artifacts can impact downstream applications such as mesh editing or physics simulations.
+L274: To prevent such artifacts inside the mesh, we introduce a novel loss based on a feedback loop between the SDF values and the extracted mesh. This loss aims to enforce occluded points located inside the mesh to have negative SDF values.
+L275: Specifically, after extracting the surface using the Gaussians and their SDF values as described in section cite15†4.3 , we use the mesh to build an occupancy label $o_{p}\in\{0,1\}$ for each Delaunay site $p$, indicating whether these points are inside or outside the visible portion of the surface mesh as described below.
+L276: We finally enforce the Delaunay vertices labeled as inside to have negative SDF values, without enforcing any additional constraint for Delaunay vertices labeled as outside—as these points already receive supervision from the renderings.
+L277: This regularization term is computed as follows:
+L278: 
+L279: (9)  |  | $${\mathcal{}L}_{\text{interior}}=\sum_{p}H(\sigma(-f_{p}),o_{p})\cdot o_{p}\>,$$  |
+L280: 
+L281: where $H$ is the cross-entropy loss, $\sigma$ is the sigmoid function, $f_{p}$ is the SDF value of the Delaunay site $p$, and $o_{p}$ is the occupancy label of $p$.
+L282: To compute the occupancy labels $o_{p}$, we first render depth maps of the mesh from all training viewpoints. Then, for any Delaunay site $p$, we classify it as inside the mesh if it located “behind” all depth maps containing $p$ in their field of view. Updating the occupancy labels requires a few seconds and can be performed every 200 iterations, resulting in a computationally efficient and effective regularization term for producing meshes with clean interiors.
+L283: Our full optimization loss is finally defined as:
+L284: 
+L285: (10)  |  | $${\mathcal{}L}={\mathcal{}L}_{\text{vol}}+{\mathcal{}L}_{\text{mesh}}+{\mathcal{}L}_{\text{reg}}\>,$$  |
+L286: 
+L287: with
+L288: 
+L289: (11)  |  | $${\mathcal{}L}_{\text{reg}}=\lambda_{\text{erosion}}{\mathcal{}L}_{\text{erosion}}+\lambda_{\text{interior}}{\mathcal{}L}_{\text{interior}}\>,$$  |
+L290: 
+L291: where $\lambda_{\text{erosion}}$ and $\lambda_{\text{interior}}$ are hyperparameters controlling the strength of the anti-erosion and interior regularization, respectively.
+L292: cite117†Image: Refer to caption cite118†Image: Refer to caption cite119†Image: Refer to caption cite120†Image: Refer to caption cite121†Image: Refer to caption L293: 
+L294: cite122†Image: Refer to caption cite123†Image: Refer to caption cite124†Image: Refer to caption cite125†Image: Refer to caption cite126†Image: Refer to caption L295: 
+L296: Ground Truth Images
+L297: 
+L298: cite127†Image: Refer to caption cite128†Image: Refer to caption cite129†Image: Refer to caption cite130†Image: Refer to caption cite131†Image: Refer to caption L299: 
+L300: (a) 2DGS
+L301: cite132†Image: Refer to caption cite133†Image: Refer to caption cite134†Image: Refer to caption cite135†Image: Refer to caption cite136†Image: Refer to caption L302: 
+L303: (b) GOF
+L304: 
+L305: cite137†Image: Refer to caption cite138†Image: Refer to caption cite139†Image: Refer to caption cite140†Image: Refer to caption cite141†Image: Refer to caption L306: 
+L307: (c) RaDe-GS
+L308: 
+L309: cite142†Image: Refer to caption cite143†Image: Refer to caption cite144†Image: Refer to caption cite145†Image: Refer to caption cite146†Image: Refer to caption L310: (d) ours Figure 5. Qualitative comparison of surface reconstruction results on the Tanks and Temples dataset. MILo produces meshes of full scenes that better fit the target surfaces, with reduced artifacts such as cavities (three left images). Our approach effectively addresses the erosion problem that plagues previous methods (two right images), while producing lighter meshes.
+L311: In addition, it is particularly effective at recovering peripheral objects (e.g., the bike rack or chandelier) that are often missed by post-hoc methods. Table 3. Surface reconstruction metrics on the DTU dataset. We report the Chamfer Distance across 15 scenes. Our method achieves competitive performance with significantly fewer Gaussians and mesh vertices compared to previous approaches.
+L312:  | 24  | 37  | 40  | 55  | 63  | 65  | 69  | 83  | 97  | 105  | 106  | 110  | 114  | 118  | 122  |  | Mean  | Time
+L313: implicit  | NeRF (cite73†Mildenhall et al., 2020 )  |  | 1.90  | 1.60  | 1.85  | 0.58  | 2.28  | 1.27  | 1.47  | 1.67  | 2.05  | 1.07  | 0.88  | 2.53  | 1.06  | 1.15  | 0.96  |  | 1.49  | $>\text{12h}$
+L314: VolSDF (cite65†Yariv et al., 2021 )  |  | 1.14  | 1.26  | 0.81  | 0.49  | 1.25  | 0.70  | 0.72  | 1.29  | 1.18  | 0.70  | 0.66  | 1.08  | 0.42  | 0.61  | 0.55  |  | 0.86  | $>\text{12h}$
+L315: NeuS (cite66†Wang et al., 2021 )  |  | 1.00  | 1.37  | 0.93  | 0.43  | 1.10  | 0.65  | 0.57  | 1.48  | 1.09  | 0.83  | 0.52  | 1.20  | 0.35  | 0.49  | 0.54  |  | 0.84  | $>\text{12h}$
+L316: Neuralangelo (cite53†Li et al., 2023 )  |  | 0.37  | 0.72  | 0.35  | 0.35  | 0.87  | 0.54  | 0.53  | 1.29  | 0.97  | 0.73  | 0.47  | 0.74  | 0.32  | 0.41  | 0.43  |  | 0.61  | $>\text{12h}$
+L317: explicit  | 3D GS (cite70†Kerbl et al., 2023 )  |  | 2.14  | 1.53  | 2.08  | 1.68  | 3.49  | 2.21  | 1.43  | 2.07  | 2.22  | 1.75  | 1.79  | 2.55  | 1.53  | 1.52  | 1.50  |  | 1.96  | 5.2m
+L318: SuGaR (cite58†Guédon and Lepetit, 2024b )  |  | 1.47  | 1.33  | 1.13  | 0.61  | 2.25  | 1.71  | 1.15  | 1.63  | 1.62  | 1.07  | 0.79  | 2.45  | 0.98  | 0.88  | 0.79  |  | 1.33  | 52m
+L319: 2D GS (cite95†Huang et al., 2024 )  |  | 0.48  | 0.91  | 0.39  | 0.39  | 1.01  | 0.83  | 0.81  | 1.36  | 1.27  | 0.76  | 0.70  | 1.40  | 0.40  | 0.76  | 0.52  |  | 0.80  | 8.9m
+L320: GOF (cite97†Yu et al., 2024 )  |  | 0.50  | 0.82  | 0.37  | 0.37  | 1.12  | 0.74  | 0.73  | 1.18  | 1.29  | 0.68  | 0.77  | 0.90  | 0.42  | 0.66  | 0.49  |  | 0.74  | 55m
+L321: RaDe-GS (cite56†Zhang et al., 2024 )  |  | 0.46  | 0.73  | 0.33  | 0.38  | 0.79  | 0.75  | 0.76  | 1.19  | 1.22  | 0.62  | 0.70  | 0.78  | 0.36  | 0.68  | 0.47  |  | 0.68  | 8.3m
+L322: Ours (base)  |  | 0.43  | 0.74  | 0.34  | 0.37  | 0.80  | 0.74  | 0.70  | 1.21  | 1.22  | 0.66  | 0.62  | 0.80  | 0.37  | 0.76  | 0.48  |  | 0.68  | 25m
+L323: ## 6. Experiments
+L324: 
+L325: In this section, we evaluate our method on various datasets and compare it with state-of-the-art approaches for surface reconstruction from multi-view images. We first describe our experimental setup, then present quantitative and qualitative results for surface reconstruction quality, followed by ablation studies and applications in mesh editing and animation. We show that the obtained meshes are clean, accurate and light as showcased in Fig. cite147†4 .
+L326: #### Implementation Details.
+L327: Our method is implemented in PyTorch, building upon the RaDe-GS codebase for Gaussian Splatting with depth and normal maps rendering. We train the Gaussian representation using standard 3D Gaussian Splatting techniques with aggressive densification and importance-weighted sampling inspired by Mini-Splatting2 (cite71†Fang and Wang, 2024b ). We provide more details on the optimization procedure, SDF normalization, mesh rendering and Delaunay triangulation in the supplementary material.
+L328: #### Datasets.
+L329: We evaluate our method on several standard datasets: (1) the Tanks and Temples (T&T) dataset (cite110†Knapitsch et al., 2017 ), which contains complex real-world scenes with varying scales and challenging geometry; (2) the DTU dataset (cite68†Jensen et al., 2014 ), which provides scans of real objects with ground truth geometry; (3) the Mip-NeRF 360 dataset (cite78†Barron et al., 2022 ), which contains unbounded and complex scenes; (4) and DeepBlending (cite148†Hedman et al., 2018 ) which contains real-world scenes with challenging geometry.
+L330: For T&T, we follow previous works (cite54†Huang et al., 2024 ; cite55†Yu et al., 2024 ; cite56†Zhang et al., 2024 ) and use the scenes Barn, Caterpillar, Ignatius, Courthouse, Meetingroom, and Truck. For DTU, we use the same 15 scenes as in previous works (cite54†Huang et al., 2024 ; cite55†Yu et al., 2024 ; cite56†Zhang et al., 2024 ).
+L331: #### Metrics.
+L332: 
+L333: For quantitative evaluation of surface reconstruction quality, we follow standard practice (cite55†Yu et al., 2024 ; cite56†Zhang et al., 2024 ) and report F1-score for T&T and Chamfer Distance for DTU. For novel view synthesis on Mip-NeRF 360 and DeepBlending, we report PSNR, SSIM, and LPIPS metrics.
+L334: No dataset provides ground truth geometry for background objects. To mitigate this issue we use Mesh-Based Novel View Synthesis  (see Section. cite31†6.3 ) to measure the visual consistency between the extracted mesh and reference views, which contain background information. This evaluation measures the ability of reconstructed meshes to accurately represent full scenes, including background objects, while requiring only a set of ground truth images.
+L335: ### 6.1. Resources Requirements.
+L336: 
+L337: The addition of mesh-based constraints inevitably leads to increased computational load. However, we observed that only a subset of Gaussians is critical for producing an effective tetrahedral structure.
+L338: Building on this, inspired by the sampling strategy introduced in Mini-Splatting2 (cite71†Fang and Wang, 2024b ), we employ it for a distinct purpose: selecting the Gaussians which will spawn the Gaussian pivots that serve as Delaunay vertices. Unlike Mini-Splatting2, our dense model preserves all Gaussians throughout optimization, and the sampling criterion is used exclusively to identify those most suitable for mesh construction rather than to prune the representation.
+L339: This targeted selection yields lighter and more accurate meshes, significantly reducing the computational cost of triangulation, Marching Tetrahedra, and mesh rasterization. Table cite149†1 provides a comprehensive comparison of the computational resources required by concurrent methods.
+L340: #### Memory Requirements.
+L341: 
+L342: All experiments were conducted on a single NVIDIA RTX 4090 GPU with 24GB of VRAM. The base model contains between 0.1 and 0.5 million Gaussians, requiring 10GB of VRAM during training. The dense model generally contains between 2 and 4 million Gaussians requiring up to 17GB.
+L343: #### Time Requirements.
+L344: 
+L345: A complete training run for the base model on a single GPU takes 25 minutes for bounded scenes from DTU and between 40 and 50 minutes for unbounded scenes from Tanks and Temples and Mip-NeRF 360, while the dense model requires up to 2 hours for unbounded scenes.
+L346: #### Storage Requirements.
+L347: Our base model uses significantly fewer Gaussians (0.1-0.5M) and produces meshes with fewer vertices compared to previous approaches. Despite using fewer resources, our method achieves superior performance in terms of surface reconstruction quality. The dense variant of our model maintains a larger set of Gaussians but still produces meshes with fewer vertices and triangles than competing methods, making it more suitable for downstream applications that require efficient mesh representations.
+L348: ### 6.2. Surface Reconstruction
+L349: 
+L350: Table cite150†2 presents the quantitative results on the Tanks and Temples dataset. Our method consistently outperforms previous approaches in terms of F-score, demonstrating the effectiveness of our mesh-in-the-loop optimization strategy. The dense variant of our method achieves the best results among all Gaussian-based approaches.
+L351: We provide results on the DTU dataset, consisting of small, object-centric scenes. Table cite151†3 shows the results on this dataset. Note that, DTU consists of isolated objects in highly controlled scenes, where standard post-hoc mesh extraction is already effective. MILo is particularly effective for complex full-scene reconstruction. Still, our mesh-in-the-loop optimization maintains competitive performance in terms of Chamfer Distance (CD) on DTU.
+L352: In line with established practice, we evaluate performance using F-Score on the Tanks and Temples dataset and Chamfer Distance (CD) on DTU.
+L353: Table 4. Mesh-Based Novel View synthesis metrics on real-world datasets. We report PSNR, SSIM, and LPIPS metrics, as well as the total number of Gaussians and vertices (in millions). Our method demonstrates superior performance on these challenging unbounded scenes. Ours (base) uses the differentiable rasterizer from RaDe-GS.
+L354:  | MipNeRF 360  | Tanks & Temples  | DeepBlending
+L355: --- | --- | --- | ---
+L356:  | PSNR $\uparrow$  | SSIM $\uparrow$  | LPIPS $\downarrow$  | #Gaussians $\downarrow$  | #Verts $\downarrow$  | PSNR $\uparrow$  | SSIM $\uparrow$  | LPIPS $\downarrow$  | #Gaussians $\downarrow$  | #Verts $\downarrow$  | PSNR $\uparrow$  | SSIM $\uparrow$  | LPIPS $\downarrow$  | #Gaussians $\downarrow$  | #Verts $\downarrow$
+L357: --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---
+L358: 2DGS  | 15.36  | 0.4987  | 0.4749  | 1.88  | 4.31  | 14.23  | 0.5697  | 0.4854  | 0.98  | 16.39  | 17.46  | 0.7133  | 0.5556  | 1.51  | 16.21
+L359: GOF  | 20.78  | 0.5730  | 0.4654  | 2.99  | 32.80  | 21.69  | 0.6904  | 0.3261  | 1.25  | 11.63  | 27.44  | 0.8078  | 0.2549  | 1.64  | 12.64
+L360: RaDe-GS  | 23.56  | 0.6685  | 0.3612  | 2.91  | 30.85  | 20.51  | 0.6595  | 0.3447  | 1.18  | 10.06  | 26.74  | 0.7964  | 0.2621  | 1.65  | 11.53
+L361: Ours (base)  | 24.09  | 0.6885  | 0.3235  | 0.46  | 6.73  | 21.46  | 0.7067  | 0.3489  | 0.28  | 4.36  | 28.04  | 0.8336  | 0.2285  | 0.38  | 5.40
+L362: cite152†Image: Refer to caption | cite153†Image: Refer to caption L363: (a) Ours  | (b) GOF
+L364: 
+L365: (c) Average cumulative distance distribution on the T&T dataset
+L366: Figure 6. Reconstruction $\rightarrow$ Ground truth Distance Evaluation. Qualitatively, our reconstructions using the differentiable rasterizer from RaDe-GS (a) are closer to the ground truth point clouds than both GOF (b) and RaDe-GS. The T&T (cite69†Knapitsch et al., 2017 ) evaluation toolkit reports cumulative histograms (c) showing the proportion of reconstructed points within a given distance from the ground truth surface. The dashed line marks the threshold used to compute the F1-score.
+L367: Our method produces significantly more points close to the true surface (within a normalized distance of $1.0$), demonstrating higher reconstruction accuracy compared to prior approaches.
+L368: Figure cite154†5 shows qualitative comparisons of our method with previous approaches on selected scenes from the Tanks and Temples and Mip-NeRF 360 datasets. Our method produces meshes with significantly cleaner surfaces and better preservation of fine details. In particular, our approach effectively addresses the erosion problem present in previous methods, resulting in more complete reconstructions of thin structures and complex geometry: see Fig. cite155†6 for a detailed analysis.
+L369: ### 6.3. Mesh-Based Novel View Synthesis
+L370: Despite extensive research on mesh reconstruction from images, current evaluation benchmarks remain limited. Common datasets—DTU, MipNeRF 360, and Tanks & Temples—all have notable drawbacks: MipNeRF 360 lacks ground-truth geometry; DTU features overly controlled, object-centric scenes; and Tanks & Temples provides sparse ground-truth limited to foreground regions.
+L371: Moreover, evaluation protocols to measure the alignment of extracted surfaces with ground truth images remain uncommon in surface reconstruction research.
+L372: We highlight this as an important issue in surface reconstruction. Inspired by previous works which evaluate surface-based view synthesis methods (cite57†Reiser et al., 2024 ), we use Mesh-Based Novel View Synthesis as an evaluation method for meshes that relies solely on ground-truth RGB images. The core intuition is that better geometry should yield better mesh-based renderings: for each test view, we render the scene using the mesh and compare the resulting image to the corresponding ground-truth image.
+L373: By measuring the visual consistency between mesh renderings and reference views, this metric allows us to evaluate:
+L374: 
+L375:   * •
+L376: 
+L377: Geometric artifacts and misalignment between the reconstructed surface and the ground truth images (e.g., surface erosion or inflation);
+L378: 
+L379:   * •
+L380: 
+L381: Mesh completeness, since missing geometry usually results in degraded rendering performance;
+L382: 
+L383:   * •
+L384: 
+L385: Background reconstruction, even when 3D ground truth is unavailable.
+L386: To render the mesh from a given viewpoint, we first rasterize the triangles using Nvdiffrast (cite156†Laine et al., 2020 ). Then, we associate a color with each pixel based on the rasterized triangle.
+L387: 
+L388: A naive approach would rely on vertex colors, assigning RGB values to each mesh vertex and interpolating those values to determine a pixel’s color. However, this method biases the metric towards dense meshes, as image quality would suffer for sparse, yet accurate, meshes due to limited color resolution.
+L389: To overcome this, we decouple color from mesh resolution by employing a neural color field $F_{\text{color}}:{\mathds{R}}^{3}\rightarrow[0,1]^{3}$ for texturing the mesh. Specifically, to obtain the rendered color for any pixel $p$, we first calculate the 3D location $P\in{\mathds{R}}^{3}$ of the triangle point rasterized onto the pixel $p$. This is achieved by backprojecting the depth value using camera parameters.
+L390: We then query the neural color field at this backprojected surface point to retrieve its RGB value $F_{\text{color}}(P)$. Unlike vertex colors, this mesh texturing process stores color values in a neural field rather than per-vertex, ensuring color assignment is independent of mesh resolution.
+L391: In practice, for each mesh under evaluation, we first train the neural field using only the training views. We adopt TensoRF(cite76†Chen et al., 2022 ) as the backbone representation and optimize it for 5k iterations. We then render test views for evaluation. This metric effectively quantifies the alignment between mesh geometry and the image data.
+L392: Note that, this evaluation protocol assumes dense testing views, as achieving good mesh-based rendering performance on a sparse test set does not necessarily translate into high quality of the underlying geometry.
+L393: Table cite157†4 shows how Mesh-Based Novel View Synthesis allows us to compare against other state-of-the-art methods. We use the differentiable rasterizer from RaDe-GS for training Ours (base). Our approach outperforms 2DGS (cite95†Huang et al., 2024 ) and RaDe-GS (cite56†Zhang et al., 2024 ) across all metrics. GOF (cite55†Yu et al., 2024 ) produces highly detailed meshes, yielding strong PSNR results, but our method achieves comparable PSNR while outperforming in SSIM and LPIPS.
+L394: This suggests that our meshes are not only accurate but also exhibit fewer visual artifacts and less noise compared to those from GOF. We include a qualitative comparison in the supplementary material.
+L395: Moreover, the performance on Tanks & Temples under the Mesh-Based Novel View Synthesis  metric (Table cite157†4 ) shows strong correlation with the F1 score computed against ground-truth geometry (Table cite150†2 ). For example, among the common baselines, 2DGS and RaDe-GS rank fourth and third, respectively, under both metrics. Ours (base) and GOF also perform consistently, with the Ours (base) achieving a slightly higher F1 score and GOF performing marginally better on Mesh-Based Novel View Synthesis.
+L396: These results indicate that our proposed metric is well aligned with ground-truth geometric accuracy.
+L397: ### 6.4. Novel View Synthesis
+L398: 
+L399: While our primary focus is on surface reconstruction, we also provide in supplementary material an evaluation of the novel view synthesis quality of our optimized Gaussians. Our method maintains competitive rendering quality compared to previous approaches, demonstrating that our mesh-in-the-loop optimization does not compromise the visual fidelity of the Gaussian representation.
+L400: cite158†Image: Refer to caption | cite159†Image: Refer to caption L401: (a) Baseline + $\mathcal{L}_{\text{MD}}$  | (b) Baseline + $\mathcal{L}_{\text{mesh}}$
+L402: Figure 7. Effect of adding Normal supervision. Despite showcasing an apparent decrease in performance in our ablation study (see the supplementary material), this figure supports our statement that the combination of depth and normal supervision is essential. The resulting mesh when using only $\mathcal{L}_{\text{MD}}$ is significantly noisier than when supervising with $\mathcal{L}_{\text{mesh}}$.
+

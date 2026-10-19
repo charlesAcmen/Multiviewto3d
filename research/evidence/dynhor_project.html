@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-9GETVCQ90R"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-9GETVCQ90R');
+  </script>
+
+  <meta charset="utf-8">
+  <meta name="description"
+        content="">
+  <meta name="keywords" content="CVPR 2025">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hand-held Object Reconstruction from RGB Video with Dynamic Interaction</title>
+
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro"
+        rel="stylesheet">
+
+
+  <link rel="stylesheet" href="./static/css/bulma.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-slider.min.css">
+  <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="./static/css/index.css">
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script defer src="./static/js/fontawesome.all.min.js"></script>
+  <script src="./static/js/bulma-carousel.min.js"></script>
+  <script src="./static/js/bulma-slider.min.js"></script>
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+  <!-- <script src="http://popcornjs.org/code/dist/popcorn-complete.js"></script> -->
+</head>
+<body>
+
+
+<section class="hero">
+  <div class="hero-body">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered">
+        <div class="column has-text-centered">
+          <h1 class="title is-1 publication-title">Hand-held Object Reconstruction from RGB Video with Dynamic Interaction</h1>
+          <div class="is-size-5 publication-authors">
+            <span class="author-block">
+              <a href="https://east-j.github.io">Shijian Jiang</a><sup>1</sup>,
+                  Qi Ye</a><sup>1,2*</sup>,
+                  Rengan Xie<sup>3</sup>,
+                  Yuchi Huo<sup>3,4</sup>,
+                  Jiming Chen<sup>1</sup>
+            </span>
+          </div>
+          <br>
+          <div class="is-size-6 publication-authors">
+            <span class="author-block"><sup>1</sup>College of Control Science and Engineering, Zhejiang University &nbsp;&nbsp;</span>
+            <span class="author-block"><sup>2</sup>Key Lab of CS&AUS of Zhejiang Province</span>
+            <span class="author-block"><sup>3</sup>State Key Lab of CAD&CG, Zhejiang University&nbsp;&nbsp;</span>
+            <span class="author-block"><sup>4</sup>Zhejiang Lab&nbsp;&nbsp;</span>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: center;">
+            <img src="static/images/zjulogo.png" style="max-height: 150px;">
+          </div>
+        
+          <div style="font-size:30px; font-weight: bold;">
+            CVPR 2025
+          </div>
+
+          <div class="column has-text-centered">
+            <div class="publication-links">
+              <!-- PDF Link. -->
+              <span class="link-block">
+                <a href="https://openaccess.thecvf.com/content/CVPR2025/html/Jiang_Hand-held_Object_Reconstruction_from_RGB_Video_with_Dynamic_Interaction_CVPR_2025_paper.html" class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="fas fa-file-pdf"></i>
+                  </span>
+                  <span>Paper</span>
+                </a>
+              </span>
+              <!-- Video Link. -->
+              <span class="link-block">
+                <a href="https://www.bilibili.com/video/BV1CkNdzfE4q/?share_source=copy_web&vd_source=9585d5f3520a4ee3781ee696ca6a41b7" class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="fab fa-youtube"></i>
+                  </span>
+                  <span>Video</span>
+                </a>
+              </span>
+              <!-- Code Link. -->
+              <span class="link-block">
+                <a href="https://github.com/EAST-J/Dynhor" class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="fab fa-github"></i>
+                  </span>
+                  <span>Code</span>
+                  </a>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+
+
+<section class="section">
+  <div class="container is-max-desktop">
+    <!-- Abstract. -->
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Abstract</h2>
+        <div class="content has-text-justified">
+          <p>
+            This work aims to reconstruct the 3D geometry of a rigid object manipulated by one or both hands using monocular RGB video. 
+            Previous methods rely on Structure-from-Motion or hand priors to estimate relative motion between the object and camera, which typically assume textured objects or single-hand interactions. 
+            To accurately recover object geometry in dynamic interactions, we incorporate priors from 3D generation model into object pose estimation 
+            and propose semantic consistency constraints to solve the challenge of shape and texture discrepancy between the generated priors and observations. 
+            The poses are initialized, followed by joint optimization of the object poses and implicit neural representation. During optimization, a novel pose outlier voting strategy with inter-view consistency is proposed to correct large pose errors. 
+            Experiments on three datasets demonstrate that our method significantly outperforms the state-of-the-art in reconstruction quality for both single- and two-hand scenarios.
+          </p>
+        </div>
+      </div>
+    </div>
+    <!--/ Abstract. -->
+
+    <!-- Paper video. -->
+
+    <br>
+    <br>
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Overview</h2>
+        <img src="static/images/pipeline.png" style="max-width: 700px">
+        <p align="left">
+          <strong>Overview of our framework</strong>. We first prompt ChatGPT to describe the hand-held object and generate a 3D textured mesh based on this textual description. Despite appearance discrepancies, we leverage semantic consistency to initialize the object pose by aligning the generated prior with the input images in the DINO feature space. We then use the coarse poses to learn an implicit object representation while simultaneously refining the poses. Finally, we introduce a pose outlier voting strategy to correct significantly erroneous poses.
+        </p>
+      </div>
+    </div>
+
+    <!--/ Paper video. -->
+  </div>
+</section>
+
+
+<style>
+model-viewer {
+  width: 400px;
+  height: 300px;
+}
+</style>
+
+
+
+
+<!-- <section class="hero">
+  <div class="hero-body">
+    <div class="container is-max-desktop">
+      <div class='title is-3'>Interactive Results</div>
+      <div class='title is-4 has-text-centered'>Dataset</div>
+
+      <div class="columns">
+        <div class="column has-text-centered">
+          <span id="bottle" class="button is-info is-rounded">
+            Bottle
+          </span>
+          <span id="box" class="button is-normal is-rounded">
+            Box
+          </span>
+        </div>
+      </div>
+
+      <div class="has-text-centered">
+        <div class="columns">
+          <div class="column has-text-centered ">
+            <span id="1_gt" class="button is-info is-rounded">
+              Ground Truth
+            </span>
+            <span id="1_ours" class="button is-normal is-rounded">
+              Ours
+            </span>
+            <span id="1_hhor" class="button is-normal is-rounded">
+              HHOR
+            </span>
+            <span id="1_neus" class="button is-normal is-rounded">
+              NeuS
+            </span>
+            <span id="1_ihoi" class="button is-normal is-rounded">
+              IHOI
+            </span>
+          </div>
+        </div>
+        <div class="columns is-vcentered">
+          <div class="column is-centered">
+            <span class="link-block">
+              <img src="static/models/Bottle/reference.png" style="max-height: 300px;" height="100%" id="v1">
+            </span>
+          </div>
+          <div class="column is-centered">
+            <span>
+              <model-viewer id="m1" alt="chair"
+              src="static/models/Bottle/gt.glb"
+              shadow-intensity="1"
+              ar environment-image="static/models/thatch_chapel_2k.hdr"
+              auto-rotate rotation-per-second="40deg"
+              camera-controls touch-action="pan-y"
+              >
+              </model-viewer>
+            </span>
+          </div>
+        </div>
+      </div>
+      <br>
+
+      <div class="has-text-centered">
+        <div class="columns">
+          <div class="column has-text-centered">
+            <span id="2_gt" class="button is-normal is-rounded">
+              Ground Truth
+            </span>
+            <span id="2_ours" class="button is-info is-rounded">
+              Ours
+            </span>
+            <span id="2_hhor" class="button is-normal is-rounded">
+              HHOR
+            </span>
+            <span id="2_neus" class="button is-normal is-rounded">
+              NeuS
+            </span>
+            <span id="2_ihoi" class="button is-normal is-rounded">
+              IHOI
+            </span>
+          </div>
+        </div>
+        <div class='columns is-vcentered'>
+          <div class="column is-centered">
+            <span>
+              <img src="static/models/Bottle/reference.png" style="max-height: 300px;" height="100%" id="v2">
+              <br>
+            </span>
+          </div>
+          <div class="column is-centered">
+            <span>
+              <model-viewer id='m2' alt="chair"
+              src="static/models/Bottle/ours.glb"
+              shadow-intensity="1"
+              ar environment-image="static/models/thatch_chapel_2k.hdr"
+              auto-rotate rotation-per-second="40deg"
+              camera-controls touch-action="pan-y"
+              >
+              </model-viewer>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section> -->
+
+<br>
+<br>
+<div class="columns is-centered has-text-centered">
+  <div class="column is-four-fifths">
+    <h2 class="title is-3">In-the-wild Results</h2>
+    <div class="publication-video">
+      <video autoplay muted controls style="max-width: 100%; height: auto;">
+        <source src="static/videos/sample.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+    </div>
+  </div>
+</div>
+
+<section class="section" id="BibTeX">
+  <div class="container is-max-desktop content">
+    <h2 class="title">BibTeX</h2>
+    <pre><code>@inproceedings{jiang2025hand,
+      title={Hand-held Object Reconstruction from RGB Video with Dynamic Interaction},
+      author={Jiang, Shijian and Ye, Qi and Xie, Rengan and Huo, Yuchi and Chen, Jiming},
+      booktitle={Proceedings of the Computer Vision and Pattern Recognition Conference},
+      pages={12220--12230},
+      year={2025}
+    }</code></pre>
+  </div>
+</section>
+
+
+<section class="hero">
+  <div class="hero-body">
+    <div class="container is-max-desktop">
+      <div class='title is-3'>Contact</div>
+      <div>
+        For questions, feel free to contact Shijian Jiang (jsj630@zju.edu.cn)
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<script>
+
+  var data_bottle = {
+    "gt":{
+      "img":"static/models/Bottle/reference.png",
+      "model":"static/models/Bottle/gt.glb"
+    },
+    "ours":{
+      "img":"static/models/Bottle/reference.png",
+      "model":"static/models/Bottle/ours.glb"
+    },
+    "hhor":{
+      "img":"static/models/Bottle/reference.png",
+      "model":"static/models/Bottle/hhor.glb"
+    },
+    "neus":{
+      "img":"static/models/Bottle/reference.png",
+      "model":"static/models/Bottle/neus.glb"
+    },
+    "ihoi":{
+      "img":"static/models/Bottle/reference.png",
+      "model":"static/models/Bottle/ihoi.glb"
+    },
+  }
+  var data_box = {
+    "gt":{
+      "img":"static/models/Box/reference.png",
+      "model":"static/models/Box/gt.glb"
+    },
+    "ours":{
+      "img":"static/models/Box/reference.png",
+      "model":"static/models/Box/ours.glb"
+    },
+    "hhor":{
+      "img":"static/models/Box/reference.png",
+      "model":"static/models/Box/hhor.glb"
+    },
+    "neus":{
+      "img":"static/models/Box/reference.png",
+      "model":"static/models/Box/neus.glb"
+    },
+    "ihoi":{
+      "img":"static/models/Box/reference.png",
+      "model":"static/models/Box/ihoi.glb"
+    },
+  }
+
+
+
+
+  data = data_bottle;
+  function sync1to2video() {
+    document.getElementById('v1').currentTime = 0;
+    document.getElementById('v2').currentTime = 0;
+  }
+
+  v1 = document.getElementById("v1")
+  v2 = document.getElementById("v2")
+
+  m1 = document.getElementById("m1")
+  m2 = document.getElementById("m2")
+
+
+  method1 = 'gt';
+  method2 = 'ours';
+
+  function update_buttons()
+  {
+    document.getElementById('bottle').className = 'button is-normal is-rounded';
+    document.getElementById('box').className = 'button is-normal is-rounded';
+    // document.getElementById('mug').className = 'button is-normal is-rounded';
+
+
+    v1.setAttribute('src', data[method1]['img']);
+    m1.setAttribute('src', data[method1]['model']);
+
+    v2.setAttribute('src', data[method2]['img']);
+    m2.setAttribute('src', data[method2]['model']);
+  }
+  // DATA LOADING
+  btn_bottle = document.getElementById('bottle');
+  btn_bottle.addEventListener('click', function onClick() {
+    data = data_bottle;
+    update_buttons();
+    btn_bottle.className = 'button is-info is-rounded';
+    // set the video
+  });
+
+  btn_box = document.getElementById('box');
+  btn_box.addEventListener('click', function onClick() {
+    data = data_box;
+    update_buttons();
+    btn_box.className = 'button is-info is-rounded';
+    // set the video
+  });
+
+
+
+  btn_1gt = document.getElementById('1_gt');
+  btn_1gt.addEventListener('click', function onClick() {
+
+    btn_1gt.className = 'button is-info is-rounded';
+    // document.getElementById('1_gt').className = 'button is-normal is-rounded';
+    document.getElementById('1_ours').className = 'button is-normal is-rounded';
+    document.getElementById('1_hhor').className = 'button is-normal is-rounded';
+    document.getElementById('1_neus').className = 'button is-normal is-rounded';
+    document.getElementById('1_ihoi').className = 'button is-normal is-rounded';
+    // set the video
+    v1.setAttribute('src', data['gt']['img']);
+    m1.setAttribute('src', data['gt']['model']);
+    method1 = "gt";
+    sync1to2video();
+  });
+
+  btn_ours1 = document.getElementById('1_ours');
+  btn_ours1.addEventListener('click', function onClick() {
+
+    btn_ours1.className = 'button is-info is-rounded';
+    document.getElementById('1_gt').className = 'button is-normal is-rounded';
+    //document.getElementById('1_ours').className = 'button is-normal is-rounded';
+    document.getElementById('1_hhor').className = 'button is-normal is-rounded';
+    document.getElementById('1_neus').className = 'button is-normal is-rounded';
+    document.getElementById('1_ihoi').className = 'button is-normal is-rounded';
+
+    v1.setAttribute('src', data['ours']['img']);
+    m1.setAttribute('src', data['ours']['model']);
+    method1 = "ours";
+    sync1to2video();
+
+  });
+
+  btn_1hhor = document.getElementById('1_hhor');
+  btn_1hhor.addEventListener('click', function onClick() {
+
+    btn_1hhor.className = 'button is-info is-rounded';
+    document.getElementById('1_gt').className = 'button is-normal is-rounded';
+    document.getElementById('1_ours').className = 'button is-normal is-rounded';
+    //document.getElementById('1_hhor').className = 'button is-normal is-rounded';
+    document.getElementById('1_neus').className = 'button is-normal is-rounded';
+    document.getElementById('1_ihoi').className = 'button is-normal is-rounded';
+
+    v1.setAttribute('src', data['hhor']['img']);
+    m1.setAttribute('src', data['hhor']['model']);
+    method1 = "hhor";
+    sync1to2video();
+
+  });
+
+  btn_1neus = document.getElementById('1_neus');
+  btn_1neus.addEventListener('click', function onClick() {
+
+    btn_1neus.className = 'button is-info is-rounded';
+    document.getElementById('1_gt').className = 'button is-normal is-rounded';
+    document.getElementById('1_ours').className = 'button is-normal is-rounded';
+    document.getElementById('1_hhor').className = 'button is-normal is-rounded';
+    //document.getElementById('1_neus').className = 'button is-normal is-rounded';
+    document.getElementById('1_ihoi').className = 'button is-normal is-rounded';
+
+    v1.setAttribute('src', data['neus']['img']);
+    m1.setAttribute('src', data['neus']['model']);
+    method1 = "neus";
+    sync1to2video();
+
+  });
+
+  btn_1ihoi = document.getElementById('1_ihoi');
+  btn_1ihoi.addEventListener('click', function onClick() {
+
+    btn_1ihoi.className = 'button is-info is-rounded';
+    document.getElementById('1_gt').className = 'button is-normal is-rounded';
+    document.getElementById('1_ours').className = 'button is-normal is-rounded';
+    document.getElementById('1_hhor').className = 'button is-normal is-rounded';
+    document.getElementById('1_neus').className = 'button is-normal is-rounded';
+    //document.getElementById('1_ihoi').className = 'button is-normal is-rounded';
+
+    v1.setAttribute('src', data['ihoi']['img']);
+    m1.setAttribute('src', data['ihoi']['model']);
+    method1 = "ihoi";
+    sync1to2video();
+
+  });
+
+
+// 222222
+
+
+btn_2gt = document.getElementById('2_gt');
+btn_2gt.addEventListener('click', function onClick() {
+
+  btn_2gt.className = 'button is-info is-rounded';
+  // document.getElementById('2_gt').className = 'button is-normal is-rounded';
+  document.getElementById('2_ours').className = 'button is-normal is-rounded';
+  document.getElementById('2_hhor').className = 'button is-normal is-rounded';
+  document.getElementById('2_neus').className = 'button is-normal is-rounded';
+  document.getElementById('2_ihoi').className = 'button is-normal is-rounded';
+  // set the video
+  v2.setAttribute('src', data['gt']['img']);
+  m2.setAttribute('src', data['gt']['model']);
+  method2 = "gt";
+  sync1to2video();
+});
+
+btn_ours2 = document.getElementById('2_ours');
+btn_ours2.addEventListener('click', function onClick() {
+
+  btn_ours2.className = 'button is-info is-rounded';
+  document.getElementById('2_gt').className = 'button is-normal is-rounded';
+  //document.getElementById('2_ours').className = 'button is-normal is-rounded';
+  document.getElementById('2_hhor').className = 'button is-normal is-rounded';
+  document.getElementById('2_neus').className = 'button is-normal is-rounded';
+  document.getElementById('2_ihoi').className = 'button is-normal is-rounded';
+
+  v2.setAttribute('src', data['ours']['img']);
+  m2.setAttribute('src', data['ours']['model']);
+  method2 = "ours";
+  sync1to2video();
+
+});
+
+btn_2hhor = document.getElementById('2_hhor');
+btn_2hhor.addEventListener('click', function onClick() {
+
+  btn_2hhor.className = 'button is-info is-rounded';
+  document.getElementById('2_gt').className = 'button is-normal is-rounded';
+  document.getElementById('2_ours').className = 'button is-normal is-rounded';
+  //document.getElementById('2_hhor').className = 'button is-normal is-rounded';
+  document.getElementById('2_neus').className = 'button is-normal is-rounded';
+  document.getElementById('2_ihoi').className = 'button is-normal is-rounded';
+
+  v2.setAttribute('src', data['hhor']['img']);
+  m2.setAttribute('src', data['hhor']['model']);
+  method2 = "hhor";
+  sync1to2video();
+
+});
+
+btn_2neus = document.getElementById('2_neus');
+btn_2neus.addEventListener('click', function onClick() {
+
+  btn_2neus.className = 'button is-info is-rounded';
+  document.getElementById('2_gt').className = 'button is-normal is-rounded';
+  document.getElementById('2_ours').className = 'button is-normal is-rounded';
+  document.getElementById('2_hhor').className = 'button is-normal is-rounded';
+  //document.getElementById('2_neus').className = 'button is-normal is-rounded';
+  document.getElementById('2_ihoi').className = 'button is-normal is-rounded';
+
+  v2.setAttribute('src', data['neus']['img']);
+  m2.setAttribute('src', data['neus']['model']);
+  method2 = "neus";
+  sync1to2video();
+
+});
+
+btn_2ihoi = document.getElementById('2_ihoi');
+btn_2ihoi.addEventListener('click', function onClick() {
+
+  btn_2ihoi.className = 'button is-info is-rounded';
+  document.getElementById('2_gt').className = 'button is-normal is-rounded';
+  document.getElementById('2_ours').className = 'button is-normal is-rounded';
+  document.getElementById('2_hhor').className = 'button is-normal is-rounded';
+  document.getElementById('2_neus').className = 'button is-normal is-rounded';
+  //document.getElementById('2_ihoi').className = 'button is-normal is-rounded';
+
+  v2.setAttribute('src', data['ihoi']['img']);
+  m2.setAttribute('src', data['ihoi']['model']);
+  method2 = "ihoi";
+  sync1to2video();
+
+});
+
+// Original script to synchronize playback of two HTML5 video windows
+  // by Adam Pierce.
+  // http://siliconsparrow.com/synchronize-two-video-replays-using-javascript/
+  // This script is public domain. You can copy, modify and share it as much
+  // as you like.
+
+  // sync 2nd (right) video to playing position of 1st (left) video
+  window.onload = function(){
+        var v1 = document.getElementById('v1');
+        // console.log("YEAH");
+        v1.addEventListener("play", function() {
+          document.getElementById('v2').play();
+        });
+
+        v1.addEventListener("pause", function() {
+          document.getElementById('v2').pause();
+        });
+
+        v1.addEventListener("seeking", function() {
+          document.getElementById('v2').currentTime = v1.currentTime;
+        });
+
+        v1.addEventListener("seeked", function() {
+          document.getElementById('v2').currentTime = v1.currentTime;
+        });
+        v1.addEventListener("onloadstart", function() {
+          document.getElementById('v2').currentTime = v1.currentTime;
+        });
+
+  }
+
+</script>
+
+
+<footer class="footer">
+  <div class="container">
+    <div class="columns is-centered">
+      <div class="column is-8">
+        <div class="content">
+          <p>
+            Website taken from
+              <a href="https://github.com/bundlesdf/bundlesdf.github.io">here</a>.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

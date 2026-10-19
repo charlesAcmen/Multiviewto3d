@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="description" content="In-Hand 3D Object Scanning from an RGB Sequence">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>In-Hand 3D Object Scanning from an RGB Sequence</title>
+
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+  <!-- <script async src="https://www.googletagmanager.com/gtag/js?id=G-PYVRSFMDRL"></script> -->
+  <!-- <script>
+    window.dataLayer = window.dataLayer || [];
+
+    function gtag() {
+      dataLayer.push(arguments);
+    }
+
+    gtag('js', new Date());
+
+    gtag('config', 'G-PYVRSFMDRL');
+  </script> -->
+
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro"
+        rel="stylesheet">
+
+  <link rel="stylesheet" href="./static/css/bulma.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-slider.min.css">
+  <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="./static/css/index.css">
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script defer src="./static/js/fontawesome.all.min.js"></script>
+  <script src="./static/js/bulma-carousel.min.js"></script>
+  <script src="./static/js/bulma-slider.min.js"></script>
+  <script src="./static/js/index.js"></script>
+  <style>
+    td, th {
+      border: 1px solid #dddddd;
+      text-align: center;
+      padding: 8px;
+    }
+  </style>
+</head>
+<body>
+
+<nav class="navbar" role="navigation" aria-label="main navigation">
+  <div class="navbar-brand">
+    <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false">
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+    </a>
+  </div>
+</nav>
+
+
+<section class="hero">
+  <div class="hero-body">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered">
+        <div class="column has-text-centered">
+          <h1 class="title is-1 publication-title">In-Hand 3D Object Scanning<br />from an RGB Sequence</h1>
+          <div class="is-size-5 publication-authors">
+            <span class="author-block">
+              <a href="https://shreyashampali.github.io/">Shreyas Hampali</a><sup>1,3</sup>,</span>
+            <span class="author-block">
+              <a href="http://www.hodan.xyz/">Tomas Hodan</a><sup>1</sup>,</span>
+            <span class="author-block">
+              <a href="https://scholar.google.cz/citations?user=YV0TVrQAAAAJ&hl=en&oi=ao">Luan Tran</a><sup>1</sup>,
+            </span>
+            <span class="author-block">
+              <a href="https://scholar.google.nl/citations?user=eUAgpwkAAAAJ&hl=en">Lingni Ma</a><sup>1</sup>,
+            </span>
+            <span class="author-block">
+              <a href="https://scholar.google.com/citations?user=9HoiYnYAAAAJ&hl=en">Cem Keskin</a><sup>1</sup>,
+            </span>
+            <span class="author-block">
+              <a href="https://vincentlepetit.github.io/">Vincent Lepetit</a><sup>2,3</sup>
+            </span>
+          </div>
+
+          <div class="is-size-6 publication-authors">
+            <span class="author-block"><sup>1</sup>Reality Labs at Meta,</span>
+            <span class="author-block"><sup>2</sup>LIGM, Ecole des Ponts, Univ Gustave Eiffel, CNRS, Marne-la-Vallee, France,</span>
+            <span class="author-block"><sup>3</sup>Institute for Computer Graphics and Vision, Graz University of Technology, Graz, Austria</span>
+          </div>
+
+          <div class="column has-text-centered">
+            <div class="publication-links">
+              <!-- PDF Link. -->
+              <span class="link-block">
+                <a href="https://arxiv.org/pdf/2211.16193.pdf"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="fas fa-file-pdf"></i>
+                  </span>
+                  <span>Paper (CVPR 2023)</span>
+                </a>
+              </span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+  
+<center>
+  <div class="overlayText">
+    <p id="topText">Input  &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;  Output</p>
+  </div>
+  <video width="320" height="240" autoplay loop muted>
+    <source src="./static/cvpr_videos/MDF14_input.mp4" type="video/mp4">
+  </video>
+  <video width="320" height="240" autoplay loop muted>
+    <source src="./static/cvpr_videos/MDF14_output.mp4" type="video/mp4">
+  </video>
+</center>
+
+<!-- Abstract. -->
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column">
+        <h2 class="title is-3">Abstract</h2>
+        <div class="content has-text-justified">
+          <p>
+            We propose a method for in-hand 3D scanning of an unknown object from a sequence of color images. We cast the
+            problem as reconstructing the object surface from un-posed
+            multi-view images and rely on a neural implicit surface
+            representation that captures both the geometry and the appearance of the object. By contrast with most NeRF-based
+            methods, we do not assume that the camera-object relative
+            poses are known and instead simultaneously optimize both
+            the object shape and the pose trajectory. As global optimization over all the shape and pose parameters is prone
+            to fail without coarse-level initialization of the poses, we
+            propose an incremental approach which starts by splitting
+            the sequence into carefully selected overlapping segments
+            within which the optimization is likely to succeed. We incrementally reconstruct the object shape and track the object
+            poses independently within each segment, and later merge
+            all the segments by aligning poses estimated at the overlapping frames. Finally, we perform a global optimization
+            over all the aligned segments to achieve full reconstruction.
+            We experimentally show that the proposed method is able to
+            reconstruct the shape and color of both textured and challenging texture-less objects, outperforms classical methods
+            that rely only on appearance features, and its performance
+            is close to recent methods that assume known camera poses.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!--/ Abstract. -->
+
+<!-- Paper video. -->
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column">
+        <div class="publication-video">
+          <iframe src="https://www.youtube.com/embed/OaBKtUBbn3M"
+                  frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!--/ Paper video. -->
+
+<center>
+  <table>
+    <tr>
+      <th>
+        Input
+      </th>
+      <th>
+        Output Shape
+      </th>
+      <th>
+        Output Poses
+      </th>
+      <th>
+        Download link
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <video width="320" height="240" autoplay loop muted>
+          <source src="./static/cvpr_videos/MDF14/input_video_n.mp4" type="video/mp4">
+        Your browser does not support HTML video.
+        </video>
+      </td>
+      <td>
+        <video width="320" height="240" autoplay loop muted>
+          <source src="./static/cvpr_videos/MDF14/video_shape_n.mp4" type="video/mp4">
+          Your browser does not support HTML video.
+        </video>
+      </td>
+      <td>
+        <video width="320" height="240" autoplay loop muted>
+          <source src="./static/cvpr_videos/MDF14/video_shape_pose_n.mp4" type="video/mp4">
+        Your browser does not support HTML video.
+        </video>
+      </td>
+      <td>
+        <a href="https://drive.google.com/drive/folders/17UGY1MsVX5nJgACnx0EJA280L99FoKlp?usp=sharing" target="_blank">Download Shape and Poses</a>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <video width="320" height="240" autoplay loop muted>
+          <source src="./static/cvpr_videos/AP13/input_video_n.mp4" type="video/mp4">
+        Your browser does not support HTML video.
+        </video>
+      </td>
+      <td>
+        <video width="320" height="240" autoplay loop muted>
+          <source src="./static/cvpr_videos/AP13/video_shape_n.mp4" type="video/mp4">
+          Your browser does not support HTML video.
+        </video>
+      </td>
+      <td>
+        <video width="320" height="240" autoplay loop muted>
+          <source src="./static/cvpr_videos/AP13/video_shape_pose_n.mp4" type="video/mp4">
+        Your browser does not support HTML video.
+        </video>
+      </td>
+      <td>
+        <a href="https://drive.google.com/drive/folders/1t4P9TQyro8_fgMPjv2AqdWbVdSzJhGPd?usp=sharing" target="_blank">Download Shape and Poses</a>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <video width="320" height="240" autoplay loop muted>
+          <source src="./static/cvpr_videos/GPMF12/input_video_n.mp4" type="video/mp4">
+        Your browser does not support HTML video.
+        </video>
+      </td>
+      <td>
+        <video width="320" height="240" autoplay loop muted>
+          <source src="./static/cvpr_videos/GPMF12/video_shape_n.mp4" type="video/mp4">
+          Your browser does not support HTML video.
+        </video>
+      </td>
+      <td>
+        <video width="320" height="240" autoplay loop muted>
+          <source src="./static/cvpr_videos/GPMF12/video_shape_pose_n.mp4" type="video/mp4">
+        Your browser does not support HTML video.
+        </video>
+      </td>
+      <td>
+        <a href="https://drive.google.com/drive/folders/1xFyuy5JfwgJUqKhM-uCIrI1n8Sm6D45x?usp=sharing" target="_blank">Download Shape and Poses</a>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <video width="320" height="240" autoplay loop muted>
+          <source src="./static/cvpr_videos/MC1/input_video_n.mp4" type="video/mp4">
+        Your browser does not support HTML video.
+        </video>
+      </td>
+      <td>
+        <video width="320" height="240" autoplay loop muted>
+          <source src="./static/cvpr_videos/MC1/video_shape_n.mp4" type="video/mp4">
+          Your browser does not support HTML video.
+        </video>
+      </td>
+      <td>
+        <video width="320" height="240" autoplay loop muted>
+          <source src="./static/cvpr_videos/MC1/video_shape_pose_n.mp4" type="video/mp4">
+        Your browser does not support HTML video.
+        </video>
+      </td>
+      <td>
+        <a href="https://drive.google.com/drive/folders/1s-ODV-eVITThJ5rqcgNKrYKXEVWO4oLp?usp=sharing" target="_blank">Download Shape and Poses</a>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <video width="320" height="240" autoplay loop muted>
+          <source src="./static/cvpr_videos/SM2/input_video_n.mp4" type="video/mp4">
+        Your browser does not support HTML video.
+        </video>
+      </td>
+      <td>
+        <video width="320" height="240" autoplay loop muted>
+          <source src="./static/cvpr_videos/SM2/video_shape_n.mp4" type="video/mp4">
+          Your browser does not support HTML video.
+        </video>
+      </td>
+      <td>
+        <video width="320" height="240" autoplay loop muted>
+          <source src="./static/cvpr_videos/SM2/video_shape_pose_n.mp4" type="video/mp4">
+        Your browser does not support HTML video.
+        </video>
+      </td>
+      <td>
+        <a href="https://drive.google.com/drive/folders/1A1izJz2GKhdkeY6hkfJLEo5e8drZTOvo?usp=sharing" target="_blank">Download Shape and Poses</a>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <video width="320" height="240" autoplay loop muted>
+          <source src="./static/cvpr_videos/ShSu12/input_video_n.mp4" type="video/mp4">
+        Your browser does not support HTML video.
+        </video>
+      </td>
+      <td>
+        <video width="320" height="240" autoplay loop muted>
+          <source src="./static/cvpr_videos/ShSu12/video_shape_n.mp4" type="video/mp4">
+          Your browser does not support HTML video.
+        </video>
+      </td>
+      <td>
+        <video width="320" height="240" autoplay loop muted>
+          <source src="./static/cvpr_videos/ShSu12/video_shape_pose_n.mp4" type="video/mp4">
+        Your browser does not support HTML video.
+        </video>
+      </td>
+      <td>
+        <a href="https://drive.google.com/drive/folders/1voZfXdK7FwUxvyqEvu99o6FU532h5Soe?usp=sharing" target="_blank">Download Shape and Poses</a>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <video width="320" height="240" autoplay loop muted>
+          <source src="./static/cvpr_videos/ABF14/input_video_n.mp4" type="video/mp4">
+        Your browser does not support HTML video.
+        </video>
+      </td>
+      <td>
+        <video width="320" height="240" autoplay loop muted>
+          <source src="./static/cvpr_videos/ABF14/video_shape_n.mp4" type="video/mp4">
+          Your browser does not support HTML video.
+        </video>
+      </td>
+      <td>
+        <video width="320" height="240" autoplay loop muted>
+          <source src="./static/cvpr_videos/ABF14/video_shape_pose_n.mp4" type="video/mp4">
+        Your browser does not support HTML video.
+        </video>
+      </td>
+      <td>
+        <a href="https://drive.google.com/drive/folders/1l-Q2AAELpYdK-FjKlZDs67qizlAVuf50?usp=sharing" target="_blank">Download Shape and Poses</a>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <video width="320" height="240" autoplay loop muted>
+          <source src="./static/cvpr_videos/BB12/input_video_n.mp4" type="video/mp4">
+        Your browser does not support HTML video.
+        </video>
+      </td>
+      <td>
+        <video width="320" height="240" autoplay loop muted>
+          <source src="./static/cvpr_videos/BB12/video_shape_n.mp4" type="video/mp4">
+          Your browser does not support HTML video.
+        </video>
+      </td>
+      <td>
+        <video width="320" height="240" autoplay loop muted>
+          <source src="./static/cvpr_videos/BB12/video_shape_pose_n.mp4" type="video/mp4">
+        Your browser does not support HTML video.
+        </video>
+      </td>
+      <td>
+        <a href="https://drive.google.com/drive/folders/1psvnAZ8kijr7_kDkNJLKzaPP_hC0mRTH?usp=sharing" target="_blank">Download Shape and Poses</a>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <video width="320" height="240" autoplay loop muted>
+          <source src="./static/cvpr_videos/SMu1/input_video_n.mp4" type="video/mp4">
+        Your browser does not support HTML video.
+        </video>
+      </td>
+      <td>
+        <video width="320" height="240" autoplay loop muted>
+          <source src="./static/cvpr_videos/SMu1/video_shape_n.mp4" type="video/mp4">
+          Your browser does not support HTML video.
+        </video>
+      </td>
+      <td>
+        <video width="320" height="240" autoplay loop muted>
+          <source src="./static/cvpr_videos/SMu1/video_shape_pose_n.mp4" type="video/mp4">
+        Your browser does not support HTML video.
+        </video>
+      </td>
+      <td>
+        <a href="https://drive.google.com/drive/folders/1q_OLKS5lQp__IlDXA2-w7KN7mmjdqSat?usp=sharing" target="_blank">Download Shape and Poses</a>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <video width="320" height="240" autoplay loop muted>
+          <source src="./static/cvpr_videos/GSF12/input_video_n.mp4" type="video/mp4">
+        Your browser does not support HTML video.
+        </video>
+      </td>
+      <td>
+        <video width="320" height="240" autoplay loop muted>
+          <source src="./static/cvpr_videos/GSF12/video_shape_n.mp4" type="video/mp4">
+          Your browser does not support HTML video.
+        </video>
+      </td>
+      <td>
+        <video width="320" height="240" autoplay loop muted>
+          <source src="./static/cvpr_videos/GSF12/video_shape_pose_n.mp4" type="video/mp4">
+        Your browser does not support HTML video.
+        </video>
+      </td>
+      <td>
+        <a href="https://drive.google.com/drive/folders/19TVvC3HS74Zvml5-PMa_IJ_KKkIEO1EE?usp=sharing" target="_blank">Download Shape and Poses</a>
+      </td>
+    </tr>
+  </table>
+</center>
+
+
+<section class="section" id="BibTeX">
+  <div class="container is-max-desktop content">
+    <h2 class="title">BibTeX</h2>
+    <pre><code>@article{hampali2023inhand,
+  author    = {Hampali, Shreyas and Hodan, Tomas and Tran, Luan and Ma, Lingni and Keskin, Cem and Lepetit, Vincent},
+  title     = {In-Hand 3D Object Scanning from an RGB Sequence},
+  journal   = {CVPR},
+  year      = {2023},
+}</code></pre>
+  </div>
+</section>
+
+
+<footer class="footer">
+  <div class="container">
+    <div class="columns is-centered">
+      <div class="column is-8">
+        <div class="content">
+          <p>
+            The website template is borrowed from <a href="https://github.com/nerfies/nerfies.github.io">nerfies</a>.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

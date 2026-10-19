@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PoseFusion: Fusing neural implicit surfaces for multi-view reconstruction from multi-pose captures</title>
+<meta name="description" content="PoseFusion: a two-stage registration-and-fusion pipeline that aligns and fuses pose-wise neural implicit surfaces into a unified, complete 3D reconstruction." />
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Noto+Sans:wght@400;500;700&display=swap" rel="stylesheet" />
+
+<!-- Font Awesome for icon buttons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<!-- ============================ HERO ============================ -->
+<section class="hero">
+  <div class="container">
+    <h1 class="title">
+      PoseFusion: Fusing neural implicit surfaces for<br />
+      multi-view reconstruction from multi-pose captures
+    </h1>
+
+    <!-- Authors (placeholder — fill in later) -->
+    <div class="authors">
+      <span class="author"><a href="#">Guanli Hou</a><sup>a</sup></span>
+      <span class="author"><a href="#">Yuanmu Xu</a><sup>b</sup></span>
+      <span class="author"><a href="#">Tenglong Ren</a><sup>a</sup></span>
+      <span class="author"><a href="#">Jiangbei Hu</a><sup>c</sup></span>
+      <span class="author"><a href="#">Fei Hou</a><sup>d e</sup></span>
+      <span class="author"><a href="#">Peng Song</a><sup>f</sup></span>
+      <span class="author"><a href="#">Ying He</a><sup>a*</sup></span>
+    </div>
+
+    <!-- Affiliations (placeholder — fill in later) -->
+    <div class="affiliations">
+      <p><sup>a</sup>Nanyang Technological University, Singapore, Singapore</p>
+      <p><sup>b</sup>University of Science and Technology Beijing, Beijing, China</p>
+      <p><sup>c</sup>Dalian University of Technology, Dalian, China </p>
+      <p><sup>d</sup>Key Laboratory of System Software (CAS), Institute of Software, Chinese Academy of Sciences, Beijing, China</p>
+      <p><sup>e</sup>University of Chinese Academy of Sciences, Beijing, China &nbsp;&nbsp; </p>
+      <p><sup>f</sup>Singapore University of Technology and Design, Singapore, Singapore</p>
+      <p class="footnote"><sup>*</sup>Corresponding author</p>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="buttons">
+      <a class="btn" href="https://www.sciencedirect.com/science/article/abs/pii/S0010448526000710" target="_blank" rel="noopener">
+        <i class="fas fa-file-pdf"></i><span>Paper</span>
+      </a>
+      <a class="btn" href="https://raining00.github.io/PoseFusion-page/" target="_blank" rel="noopener">
+        <i class="fas fa-link"></i><span>Project Page</span>
+      </a>
+      <a class="btn" href="https://github.com/houguanli/PoseFusion/tree/release/code" target="_blank" rel="noopener">
+        <i class="fab fa-github"></i><span>Code</span>
+      </a>
+      <a class="btn" href="https://github.com/houguanli/PoseFusion/tree/release/dataset" target="_blank" rel="noopener">
+        <i class="fas fa-database"></i><span>Dataset</span>
+      </a>
+    </div>
+    <p class="downloads">
+      Direct downloads:
+      <a href="https://github.com/houguanli/PoseFusion/releases/download/v1.0.0/PoseFusion-code.zip">Code ZIP</a> ·
+      <a href="https://github.com/houguanli/PoseFusion/releases/download/v1.0.0/PoseFusion-dataset-part1.zip">Dataset ZIP 1</a> ·
+      <a href="https://github.com/houguanli/PoseFusion/releases/download/v1.0.0/PoseFusion-dataset-part2.zip">Dataset ZIP 2</a>.
+      Extract all three ZIPs into the same folder.
+    </p>
+  </div>
+</section>
+
+<!-- ============================ TEASER ============================ -->
+<section class="section section--narrow">
+  <div class="container">
+    <figure class="figure">
+      <!-- IMAGE: figs/teaser_large_letters.pdf -> images/teaser.png -->
+      <img src="images/teaser.png" alt="PoseFusion teaser" onerror="this.parentNode.classList.add('img-missing')" />
+      <div class="img-fallback">images/teaser.png</div>
+      <figcaption>
+        Given multi-view images captured under multiple object poses, PoseFusion
+        automatically registers and fuses the geometry and appearance learned
+        from each pose into a unified neural implicit surface. The resulting
+        representation supports both mesh extraction and novel-view rendering,
+        recovering geometry in regions that are poorly observed from any single
+        pose.
+      </figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============================ ABSTRACT ============================ -->
+<section class="section">
+  <div class="container">
+    <h2 class="section-title">Abstract</h2>
+    <p class="abstract">
+      Recent advances in multi-view 3D reconstruction, especially neural
+      implicit surface methods, can recover high-quality geometry by
+      representing shape with signed distance functions (SDFs). However,
+      reconstructing complex objects with severe self-occlusion remains
+      difficult when all images are captured under a single object pose,
+      because the observed views often provide incomplete spatial coverage.
+      We propose <em>PoseFusion</em>, a multi-pose reconstruction framework
+      that fuses neural implicit surfaces independently learned from different
+      object poses into a unified 3D representation. PoseFusion follows a
+      two-stage registration-and-fusion pipeline. First, we extract an oriented
+      bounding box (OBB) from the mesh derived from each pose-specific SDF and
+      use the OBBs, SDF samples, and multi-view image features to estimate a
+      coarse inter-pose alignment. Second, we refine the alignment using
+      image- and SDF-guided correspondences: cross-pose image matches are
+      lifted to 3D using the learned SDFs and used to iteratively optimize the
+      relative transformations. To facilitate evaluation, we construct a
+      dataset of synthetic and real-world objects with complex geometry and
+      strong self-occlusion, captured across multiple poses with calibrated
+      multi-view images. Experiments show that PoseFusion is robust under
+      challenging capture conditions and consistently produces high-fidelity
+      reconstructions from multi-pose, multi-view inputs.
+    </p>
+  </div>
+</section>
+
+<!-- ============================ VIDEO OVERVIEW ============================ -->
+<section class="section section--alt">
+  <div class="container">
+    <h2 class="section-title">Video Overview</h2>
+    <p>
+      The video gives a quick overview of the multi-pose capture setting and
+      shows how PoseFusion aligns pose-wise reconstructions into one fused
+      neural implicit surface.
+    </p>
+
+    <figure class="figure">
+      <div class="video-embed">
+        <iframe
+          src="https://www.youtube.com/embed/elkZcS1EwMs"
+          title="PoseFusion problem setting video"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowfullscreen>
+        </iframe>
+      </div>
+      <figcaption>
+        PoseFusion registers reconstructions from different object poses and
+        combines their complementary observations into a more complete result.
+      </figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============================ PIPELINE ============================ -->
+<section class="section">
+  <div class="container">
+    <h2 class="section-title">Pipeline</h2>
+    <p>
+      PoseFusion is a <strong>two-stage registration-and-fusion</strong>
+      pipeline:
+    </p>
+    <ol class="pipeline-list">
+      <li><strong>Per-pose reconstruction.</strong> Each pose is reconstructed independently with a neural implicit surface.</li>
+      <li><strong>Coarse registration.</strong> Oriented bounding boxes (OBBs) extracted from per-pose meshes provide candidate alignments, scored by SDF samples and ResNet-18 image features.</li>
+      <li><strong>Fine registration.</strong> Cross-pose 2D correspondences from eLoFTR are lifted onto the zero-level set of the learned SDFs and used to refine the rigid transformation.</li>
+      <li><strong>Fusion.</strong> Camera extrinsics from all poses are unified, and a single neural implicit surface is jointly retrained on the merged multi-view set.</li>
+    </ol>
+
+    <figure class="figure">
+      <!-- IMAGE: figs/pipeline.pdf -> images/pipeline.png -->
+      <img src="images/pipeline.png" alt="PoseFusion pipeline overview" onerror="this.parentNode.classList.add('img-missing')" />
+      <div class="img-fallback">images/pipeline.png</div>
+      <figcaption>
+        Overview of the PoseFusion pipeline. (a) Input multi-view images from
+        different poses. (b) Per-pose reconstructions using neural implicit
+        surfaces. (c) Coarse alignment using oriented bounding boxes. (d) Fine
+        alignment guided by image correspondences and SDF constraints.
+        (e) Final fusion produces a complete 3D reconstruction with enhanced
+        geometric details.
+      </figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============================ METHOD ============================ -->
+<section class="section section--alt">
+  <div class="container">
+    <h2 class="section-title">Method</h2>
+
+    <h3 class="subsection-title">Coarse registration</h3>
+    <p>
+      Without loss of generality, we set the first pose as the target
+      <em>P<sub>t</sub></em> and align each remaining pose <em>P<sub>s</sub></em>
+      pairwise to it. After extracting per-pose meshes from the learned SDFs,
+      we apply PCA to obtain oriented bounding boxes
+      <em>O<sub>s</sub></em>, <em>O<sub>t</sub></em>. The 24 candidate vertex
+      correspondences between the OBBs define 24 rigid candidates
+      <em>τ<sub>1…24</sub></em>. We score each candidate with a combined
+      geometric–visual loss:
+    </p>
+
+    <div class="equation">
+      L<sub>coarse</sub> =
+      (λ<sub>sdf</sub> / N<sub>o</sub>) · Σᵢ ‖S<sub>t</sub><sup>(i)</sup> − S<sub>s</sub><sup>(i)</sup>‖
+      + λ<sub>img</sub> · ( 1 − cos( φ(I<sub>t</sub>), φ(I<sub>s</sub>) ) )
+    </div>
+
+    <p>
+      where φ(·) is the third residual block (conv3) of a ResNet-18 feature
+      extractor. We empirically set
+      λ<sub>sdf</sub> = λ<sub>img</sub> = 0.5 and sample
+      N<sub>o</sub> = 100,000 points on the OBB surfaces.
+    </p>
+
+    <figure class="figure">
+      <!-- IMAGE: figs/sdf_img_diff_wider.pdf -> images/sdf_image_diff.png -->
+      <img src="images/sdf_image_diff.png" alt="SDF- and image-feature-augmented OBB alignment" onerror="this.parentNode.classList.add('img-missing')" />
+      <div class="img-fallback">images/sdf_image_diff.png</div>
+      <figcaption>
+        SDF- and image-feature-augmented OBB alignment. (a) Random points
+        sampled on a unit cube are mapped to the OBBs of the source and target
+        poses; their SDF values yield the geometric term. (b) Image features
+        I<sub>s</sub>, I<sub>t</sub> are extracted from the third residual
+        block of ResNet-18 and used in the visual term.
+      </figcaption>
+    </figure>
+
+    <h3 class="subsection-title">Fine registration</h3>
+    <p>
+      The coarse transform <em>τ*</em> initializes the fine stage. We pick
+      cross-pose image pairs whose camera extrinsics are close after applying
+      <em>τ*</em>:
+    </p>
+
+    <div class="equation">
+      trace( E<sub>1</sub> · E′<sub>2</sub><sup>−1</sup> ) &lt; ε,
+      &nbsp;&nbsp;&nbsp; E′<sub>2</sub> = τ* · E<sub>2</sub>
+    </div>
+
+    <p>
+      eLoFTR matches the selected pairs in 2D; matched pixels are lifted to 3D
+      by tracing camera rays and snapping to the zero-level sets of the
+      learned SDFs. We then optimize the rigid transform
+      <strong>T = (R, t)</strong> by minimizing
+    </p>
+
+    <div class="equation">
+      L<sub>fine</sub> = κ( L<sub>sdf</sub> ) + λ · L<sub>rotation</sub>
+    </div>
+
+    <p>
+      where L<sub>sdf</sub> is a bidirectional SDF-consistency term that
+      pushes transformed source points to the target zero-level set (and vice
+      versa), L<sub>rotation</sub> = ‖R<sup>T</sup>R − I‖ keeps R orthogonal,
+      and κ is a robust kernel.
+    </p>
+
+    <figure class="figure">
+      <!-- IMAGE: figs/fine_reg.pdf -> images/fine_reg.png -->
+      <img src="images/fine_reg.png" alt="Fine registration overview" onerror="this.parentNode.classList.add('img-missing')" />
+      <div class="img-fallback">images/fine_reg.png</div>
+      <figcaption>
+        Overview of the fine registration stage: candidate image pairs are
+        selected by camera-pose similarity, eLoFTR provides 2D correspondences,
+        these are lifted to 3D via the learned SDFs, and the rigid transform
+        is refined by SDF-consistency losses.
+      </figcaption>
+    </figure>
+
+    <h3 class="subsection-title">Fusion (optional retraining)</h3>
+    <p>
+      After fine registration, all camera extrinsics are expressed in a
+      common coordinate frame. A single unified implicit surface is then
+      jointly retrained on the merged multi-view set. This step is optional
+      but consistently improves geometric completeness and rendering quality
+      for objects with severe self-occlusion or fine details.
+    </p>
+  </div>
+</section>
+
+<!-- ============================ DATASET ============================ -->
+<section class="section">
+  <div class="container">
+    <h2 class="section-title">Dataset</h2>
+    <p>
+      We construct a benchmark of <strong>18 objects</strong> — 11 synthetic
+      and 7 real-world — each captured under <strong>three poses</strong> with
+      30–40 multi-view images per pose. Synthetic data is rendered with
+      BlenderNeRF + Blender. Real captures use an iPhone, with intrinsics and
+      extrinsics calibrated against a 1m × 1m ArUco marker board so that all
+      poses share a common metric scale.
+    </p>
+
+    <figure class="figure">
+      <!-- IMAGE: figs/all_results_overview.pdf -> images/dataset_overview.png -->
+      <img src="images/dataset_overview.png" alt="Dataset and PoseFusion results overview" onerror="this.parentNode.classList.add('img-missing')" />
+      <div class="img-fallback">images/dataset_overview.png</div>
+      <figcaption>
+        Overview of the dataset and PoseFusion results. For each object we
+        show a representative input image and a rendered view of the fused
+        3D surface.
+      </figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============================ RESULTS ============================ -->
+<section class="section section--alt">
+  <div class="container">
+    <h2 class="section-title">Results</h2>
+
+    <h3 class="subsection-title">Qualitative comparison</h3>
+    <p>
+      We compare against DReg-NeRF, Reg-NF, and GaussReg on objects with
+      large pose variation, complex topology, partial symmetry, and severe
+      self-occlusion. PoseFusion successfully aligns all three poses and
+      produces coherent, complete reconstructions where baselines fail or
+      diverge by tens of degrees.
+    </p>
+
+    <figure class="figure">
+      <!-- IMAGE: figs/method_res_cmp.pdf -> images/reg_result_cmp.png -->
+      <img src="images/reg_result_cmp.png" alt="Qualitative registration comparison" onerror="this.parentNode.classList.add('img-missing')" />
+      <div class="img-fallback">images/reg_result_cmp.png</div>
+      <figcaption>
+        Qualitative registration comparison with DReg-NeRF, Reg-NF, and
+        GaussReg. Colors indicate reconstructions from different object
+        poses.
+      </figcaption>
+    </figure>
+
+    <h3 class="subsection-title">Fusion improves geometry &amp; rendering</h3>
+    <figure class="figure">
+      <!-- IMAGE: figs/exp_fusion_nikon_xiaomai.pdf -> images/fusion_results_detailed.png -->
+      <img src="images/fusion_results_detailed.png" alt="Fused vs. per-pose reconstructions" onerror="this.parentNode.classList.add('img-missing')" />
+      <div class="img-fallback">images/fusion_results_detailed.png</div>
+      <figcaption>
+        Visual comparison of the final fused geometry (c) and individual
+        pose-wise reconstructions (d). Highlighted regions show details
+        missing or distorted in single-pose results that are recovered after
+        fusion.
+      </figcaption>
+    </figure>
+
+    <h3 class="subsection-title">Quantitative comparison (synthetic)</h3>
+    <p>
+      Lower is better for both rotation error <em>R</em> (degrees) and
+      translation error <em>T</em> (×10²). Each cell reports
+      <em>source<sub>1</sub> / source<sub>2</sub></em>; ``—'' indicates a
+      failed run.
+    </p>
+    <div class="table-wrap">
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th>Metric</th><th>Method</th>
+            <th>Bunny</th><th>Book</th><th>Nikon</th><th>Heel Slipper</th>
+            <th>Figurine A</th><th>Tank</th><th>Monster</th>
+            <th>Figurine B</th><th>Rubik's Cube</th><th>Lego</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td rowspan="4">R (°) ↓</td><td>Reg-NF</td>
+            <td>3.62/1.84</td><td>0.29/0.27</td><td>—/—</td><td>—/—</td>
+            <td>—/—</td><td>—/—</td><td>—/—</td><td>—/—</td><td>—/—</td><td>—/—</td></tr>
+          <tr><td>DReg-NeRF</td>
+            <td>—/—</td><td>—/—</td><td>—/—</td><td>—/—</td>
+            <td>—/—</td><td>—/—</td><td>—/—</td><td>—/—</td><td>—/—</td><td>—/—</td></tr>
+          <tr><td>GaussReg</td>
+            <td>13.98/—</td><td>10.21/22.27</td><td>—/—</td><td>3.27/—</td>
+            <td>—/—</td><td>—/—</td><td>—/—</td><td>25.29/—</td><td>—/—</td><td>—/—</td></tr>
+          <tr class="best"><td><strong>Ours</strong></td>
+            <td><strong>0.09/0.02</strong></td><td><strong>0.11/0.18</strong></td>
+            <td><strong>0.09/0.11</strong></td><td><strong>0.12/0.07</strong></td>
+            <td><strong>0.01/0.03</strong></td><td><strong>0.14/0.09</strong></td>
+            <td><strong>0.03/0.03</strong></td><td><strong>0.04/0.06</strong></td>
+            <td><strong>0.08/0.11</strong></td><td><strong>0.05/0.20</strong></td></tr>
+
+          <tr><td rowspan="4">T (×10²) ↓</td><td>Reg-NF</td>
+            <td>1.47/0.75</td><td>0.13/3.84</td><td>29.56/23.0</td><td>26.25/18.68</td>
+            <td>21.29/—</td><td>—/—</td><td>—/—</td><td>—/—</td><td>—/—</td><td>—/—</td></tr>
+          <tr><td>DReg-NeRF</td>
+            <td>11.48/15.11</td><td>14.7/12.3</td><td>27.72/1.33</td><td>2.36/15.55</td>
+            <td>13.05/12.41</td><td>—/—</td><td>—/—</td><td>—/—</td><td>—/—</td><td>—/—</td></tr>
+          <tr><td>GaussReg</td>
+            <td>2.40/26.58</td><td>1.13/15.15</td><td>7.83/—</td><td>2.73/—</td>
+            <td>30.09/—</td><td>—/—</td><td>—/28.40</td><td>11.69/—</td><td>—/—</td><td>—/—</td></tr>
+          <tr class="best"><td><strong>Ours</strong></td>
+            <td><strong>0.10/0.02</strong></td><td><strong>0.06/0.03</strong></td>
+            <td><strong>0.07/0.14</strong></td><td><strong>0.03/0.02</strong></td>
+            <td><strong>0.01/0.02</strong></td><td><strong>0.13/0.10</strong></td>
+            <td><strong>0.03/0.02</strong></td><td><strong>0.03/0.06</strong></td>
+            <td><strong>0.14/0.10</strong></td><td><strong>0.07/0.18</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ BIBTEX ============================ -->
+<section class="section">
+  <div class="container">
+    <h2 class="section-title">BibTeX</h2>
+    <pre class="bibtex">@article{HOU2026104101,
+  title   = {PoseFusion: Fusing neural implicit surfaces for multi-view reconstruction from multi-pose captures},
+  author = {Guanli Hou and Yuanmu Xu and Tenglong Ren and Jiangbei Hu and Fei Hou and Peng Song and Ying He},
+  journal = {Computer-Aided Design},
+  volume = {199},
+  pages = {104101},
+  year = {2026},
+  issn = {0010-4485},
+  doi = {https://doi.org/10.1016/j.cad.2026.104101},
+}</pre>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    <p>
+      Website template inspired by academic project pages. Source available on
+      <a href="#">GitHub</a>.
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>

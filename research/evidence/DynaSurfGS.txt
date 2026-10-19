@@ -1,0 +1,901 @@
+=== PAGE 1 ===
+DynaSurfGS: Dynamic Surface Reconstruction with
+Planar-based Gaussian Splatting
+Weiwei Cai1, Weicai Y e2,3,B, Peng Y e3, Tong He3, Tao Chen1,B
+1Fudan University 2State Key Lab of CAD&CG, Zhejiang University 3Shanghai AI Laboratory
+https://open3dvlab.github.io/DynaSurfGS/
+                                   DG-mesh                                            MaGS                                                4D-GS                                                Ours
+                             GT(Img)            Surf.Render                  Mesh                Surf.Render                Mesh             Surf.Render              Mesh               Surf.Render                  Mesh
+Figure 1: We propose the DynaSurfGS framework, which can facilitate real-time photorealistic rendering and dynamic high-
+fidelity surface reconstruction. Compared with recent SOTA methods, such as DG-mesh (Liu, Su, and Wang 2024), MaGS (Ma,
+Luo, and Yang 2024), and 4D-GS (Wu et al. 2024), DynaSurfGS achieves smooth surfaces with meticulous geometry.
+Abstract
+Dynamic scene reconstruction has garnered significant at-
+tention in recent years due to its capabilities in high-quality
+and real-time rendering. Among various methodologies, con-
+structing a 4D spatial-temporal representation, such as 4D-
+GS, has gained popularity for its high-quality rendered im-
+ages. However, these methods often produce suboptimal sur-
+faces, as the discrete 3D Gaussian point clouds fail to align
+with the object’s surface precisely. To address this problem,
+we propose DynaSurfGS to achieve both photorealistic ren-
+dering and high-fidelity surface reconstruction of dynamic
+scenarios. Specifically, the DynaSurfGS framework first in-
+corporates Gaussian features from 4D neural voxels with the
+planar-based Gaussian Splatting to facilitate precise surface
+reconstruction. It leverages normal regularization to enforce
+the smoothness of the surface of dynamic objects. It also
+incorporates the as-rigid-as-possible (ARAP) constraint to
+maintain the approximate rigidity of local neighborhoods of
+3D Gaussians between timesteps and ensure that adjacent 3D
+Gaussians remain closely aligned throughout. Extensive ex-
+periments demonstrate that DynaSurfGS surpasses state-of-
+the-art methods in both high-fidelity surface reconstruction
+and photorealistic rendering.
+Introduction
+Dynamic scene reconstruction from sparse data is a chal-
+lenging and important task in computer vision, with a wide
+range of applications in fields such as movie production, en-
+tertainment industries, and autonomous driving. Many re-
+search efforts have been devoted to this field. 4D-GS (Wu
+et al. 2024) employs a deformation field network to model
+Gaussian motions and shape transformations, achieving re-
+markable rendering quality. SC-GS (Huang et al. 2024b) ap-
+plies local weight interaction of sparse control points to ob-
+tain a 3D Gaussian motion field for high-quality rendering
+and editing. (Lu et al. 2024) integrates 3D geometric features
+into 3D deformation for efficient rendering and accurate rep-
+resentation of dynamic views. However, these approaches
+primarily focus on the rendering quality of dynamic synthe-
+sis while overlooking the geometry surface reconstruction
+of dynamic objects. Recently, some works have attempted
+to make uniform and improved mesh optimization. DG-
+Mesh (Liu, Su, and Wang 2024) jointly optimizes 3D Gaus-
+sian points and the corresponding mesh. MaGS (Ma, Luo,
+and Yang 2024) improves 3DGS by constraining Gaussian
+arXiv:2408.13972v1  [cs.CV]  26 Aug 2024
+
+=== PAGE 2 ===
+points to the mesh surface and modeling the relationship
+between the mesh and Gaussian function through a learn-
+able deformation field. However, the reconstructed geomet-
+ric surfaces produced by these methods often lack smooth-
+ness and remain unsatisfactory, as shown in Fig. 1. In short,
+achieving high-quality rendered images while simultane-
+ously constructing satisfactory geometric surfaces of dy-
+namic scenarios remains largely unexplored.
+Although existing methods have achieved significant suc-
+cess in dynamic view synthesis and static geometry recon-
+struction, they still struggle to reconstruct smooth geometric
+surfaces while producing high-quality images of dynamic
+scenarios. For example, while 4D-GS (Wu et al. 2024) ex-
+cels in rendering high-quality images, the resulting geomet-
+ric surfaces are rough, as illustrated in Fig. 4. Traditional ras-
+terization methods, such as 4D-GS, fail to accurately model
+the geometry of dynamic scenes because Gaussians, due to
+their disordered and irregular nature, do not adhere well to
+the surface of the scene. Similarly, PGSR (Chen et al. 2024)
+performs well in reconstructing high-accuracy static object
+geometry but falls short in reconstructing dynamic objects,
+as shown in Fig. 4, owing to the absence of temporal infor-
+mation. Therefore, the research focuses on achieving high-
+quality rendered images while simultaneously constructing
+satisfactory geometric surfaces of dynamic scenarios.
+In this paper, we introduce the DynaSurfGS framework,
+aiming to achieve high-quality rendered images alongside
+high-precision dynamic surface reconstruction. To this end,
+the 4D voxels are decomposed into 2D planes to encode
+the motion and shape changes of each Gaussian. A com-
+pact MLP is then employed to predict the deformation of
+the Gaussian across different timesteps. Unlike traditional
+rasterisation (Kerbl et al. 2023), we calculate depth using
+a planar-based depth rendering approach inspired by PGSR
+(Chen et al. 2024). This enables optimized Gaussian points
+to be attached to the scene surface. Subsequently, we em-
+ploy planar-based Gaussian splitting to generate normal and
+distance maps, which are then utilized to compute an unbi-
+ased depth map, as shown in Fig. 2. We further estimate the
+distance normal using the unbiased depth information from
+neighboring pixels. By enforcing consistency between the
+distance normal and the rendering normal, we ensure that the
+depth aligns with the normal, facilitating the reconstruction
+of smooth geometric surfaces for dynamic objects. To main-
+tain the rigidity of dynamic objects during motion, we intro-
+duce the as-rigid-as-possible (ARAP) regularization, which
+constrains the object’s shape to remain unchanged following
+rotation and translation.
+We conducted comprehensive experiments on the D-
+NeRF (Pumarola et al. 2021) DG-Mesh (Liu, Su, and Wang
+2024) and Ub4D (Johnson et al. 2023) dataset. Additionally,
+we perform extensive ablation studies to validate the effec-
+tiveness of our design. Our contributions are summarized as:
+• We propose the novel DynaSurfGS framework, which in-
+tegrates the Hex-Plane representation and planar-based
+Gaussian splatting techniques to achieve photorealistic
+rendered images while enabling precise dynamic surface
+reconstruction.
+• We introduce normal regularization to constrain the re-
+construction of geometric surfaces and apply the as-
+rigid-as-possible (ARAP) regularization to ensure con-
+sistency in the motion of dynamic objects.
+• Extensive experiments demonstrate the effectiveness of
+the proposed DynaSurfGS framework.
+Related Work
+Dynamic View Synthesis
+Dynamic View Synthesis (DVS) aims to render novel pho-
+torealistic views from arbitrary viewpoints using monoc-
+ular video of a dynamic scene at any given time step.
+DVS approaches can be broadly categorized into two main
+types: one involves modeling the dynamic scene using a
+learned deformation field that maps coordinates from each
+input image to a canonical template coordinate space. D-
+NeRF (Pumarola et al. 2021) is the first to combine the
+canonical field with the deformation field to effectively
+model dynamic scenes. Nerfies (Park et al. 2021a) applies
+a coarse-to-fine regularization to adjust the capacity of the
+deformation field to capture high frequencies during opti-
+mization. HyperNeRF (Park et al. 2021b) extends the canon-
+ical field into a higher dimensional space to represent the
+5D radiance field. Recently, a novel 3D scene represen-
+tation using 3D Gaussian splitting has been proposed for
+dynamic view synthesis. Dynamic 3D Gaussians (Luiten
+et al. 2023) is the first to adopt 3D Gaussians for dynamic
+view synthesis. (Yang et al. 2024) decomposes dynamic
+scene into 3D Gaussians and a deformation field. (Lu et al.
+2024) integrates 3D geometry-aware features into defor-
+mation fields to facilitate 3D Gaussian deformation learn-
+ing. (Huang et al. 2024b) represent 3D dynamic scenes
+by manipulating 3D Gaussians through control points and
+deformation MLPs. Another strategy involves constructing
+a 4D spatial-temporal representation. NeRFlow (Du et al.
+2021) learns a 4D spatial-temporal representation of a dy-
+namic scene, while (Xian et al. 2021) represents a 4D space-
+time irradiance field that maps a spatial-temporal location to
+the color and volume density. HexPlane (Cao and Johnson
+2023), K-Plane (Fridovich-Keil et al. 2023) and 4D-GS (Wu
+et al. 2024) project 4D spatial-temporal space to multiple 2D
+planes. However, these approaches primarily focus on the
+fidelity of rendered images to the ground truth, often over-
+looking the geometric reconstruction of dynamic objects.
+Surface Reconstruction
+Surface Reconstruction (Chen et al. 2024; Ye et al. 2024b,a;
+Tang et al. 2024; Ye et al. 2022, 2023; Liu et al. 2021; Li
+et al. 2020) focuses on generating accurate and detailed sur-
+face representations from sparse data. In recent years, the
+reconstruction of static scenes has been extensively stud-
+ied. SuGaR (Gu ´edon and Lepetit 2024) introduces a reg-
+ularization term that forces the Gaussians to be aligned
+with the scene surface. 2DGS (Huang et al. 2024a) en-
+sures view-consistent geometry modeling and rendering us-
+ing 2D Gaussian primitives. PGSR (Chen et al. 2024) in-
+troduces unbiased depth rendering to achieve high-quality
+surface reconstruction. However, these methods tend to fail
+
+=== PAGE 3 ===
+.....
+...
+ 
+??
+M  L  Pspace
+space-time
+? ’ ,  ? ’ , ?’
+?’
+?’
+Splatting
+Rendered Image
+Rendered Distance Map
+Rendered Normal Map
+Unbaised Depth Map
+Photometric Loss
+Normal Regularization
+(?, ? , ?, ?)
+?0
+...
+GT Image
+ARAP Regularization
+? ?
+?
+? ?
+? ? ?
+?+1
+? ?
+?+1
+??
+? - ??
+? ??
+?+1 − ??
+?+1
+                      ?                                 ? + 1
+  Input                                       Deformation Field                                                                                                        Planar-based Gaussian Splatting
+  ?
+  ?
+  ?
+  ?
+??
+Figure 2: Overview of our method. Firstly, in the deformation field, we represent the spatial and temporal information of
+dynamic objects in Hex-Plane and use an MLP to estimate the 3D Gaussian deformation. Subsequently, ARAP regularization
+is applied to ensure the local rigidity of the dynamic object at different moments. Finally, planar-based Gaussian splatting is
+used to obtain the unbiased depth map and render the transformed 3D Gaussian to images.
+when extended to dynamic scenes due to topology changes
+during deformation. To this end, Ub4D (Johnson et al.
+2023) models the topology of dynamic objects using im-
+plicit neural radiation fields. More recently, several con-
+current works have adapted 3D Gaussian for dynamic sur-
+face reconstruction. DG-Mesh (Liu, Su, and Wang 2024) en-
+courages uniformly distributed Gaussian optimization by ex-
+ploiting Gaussian mesh anchoring techniques. MaGS (Ma,
+Luo, and Yang 2024) captures the motion of each 3D Gaus-
+sian by employing a relative deformation field to model the
+relative displacement between the mesh and the 3D Gaus-
+sians. However, achieving smooth geometric surface recon-
+struction while maintaining high-quality rendered images
+remains challenging with these methods.
+Preliminary
+3D Gaussians(Kerbl et al. 2023) serve as a flexible and ex-
+pressive representation of the scene. Each 3D Gaussian is
+characterized by an anisotropic covariance matrixΣ and the
+center µ of a point pi ∈ P , expressed as follows:
+Gi(x|µi, Σi) = e− 1
+2 (x−µi)⊤Σ−1
+i (x−µi), (1)
+To optimize the covariance matric Σ, it can be decomposed
+into a scaling matrix Si ∈ R3×3 and a rotation matrix Ri ∈
+R3×3 as:
+Σi = RiSiS⊤
+i R⊤
+i , (2)
+where R is a quaternion r ∈ SO(3), and S is a 3D vector
+s. Moreover, 3D Gaussian represents color using spherical
+harmonic (SH) coefficients sh and density through opacity
+σ. Thus, each gaussian ca be parameterized as G = {Gi :
+µi, ri, si, σi, shi}.
+When rendering a novel view, 3D Gaussian splatting
+enables fast α-blendeing for rendering. As demonstrated
+in (Zwicker et al. 2001), the covariance matrixΣ′ in the cam-
+era coordinates can be computed using the transformation
+matrix W and the Jacobian matrix J of the affine approxi-
+mation of the projection transformation:
+Σ
+′
+i = J WΣiW ⊤J ⊤, (3)
+For each pixel, the color C ∈ R3×3 can be obtained via α-
+blending:
+C =
+X
+i∈N
+αici
+i−1Y
+j=1
+(1 − αi), (4)
+where ci is the SH color coefficients and αi is the density
+calculated by:
+αi = σie− 1
+2 (x−µ′
+i)T Σ′
+i(x−µ′
+i), (5)
+where µ′
+i = J W µis the center point in the camera coordi-
+nate. By optimizing the Gaussian parameters G = {Gi :
+µi, qi, si, σi, shi} and adaptively adjusting the Gaussian
+density, real-time reconstruction of high-quality images and
+dynamic object surface reconstruction can be achieved.
+DynaSurfGS
+Overview
+Given multiview RGB images of dynamic scenes, our goal
+is to achieve both high-quality dynamic surface reconstruc-
+tion and superior rendering quality. As shown in Fig. 2, our
+framework incorporates deformation filed and planar-based
+Gaussian splatting given multiple images with correspond-
+ing camera poses and timestamps. Specifically, the defor-
+mation field comprises a Hex-Plane E and a compact MLP
+decoder D. The Hex-Plane represents 4D volume, where
+the top three representing space and the bottom three cap-
+turing spatial and temporal variations. The 3D Gaussians
+are encoded by the Hex-Plane as F = E(G), and then the
+MLP decoder to obtain the deformation of 3D Gaussians as
+△G = D(F ). The deformed 3D Gaussian is computed by
+adding these deformations to the original 3D Gaussians G:
+(µ
+′
+, r
+′
+, s
+′
+, σ, sh) = (µ + △µ, r + △r, s + △s, σ, sh). (6)
+
+=== PAGE 4 ===
+                      GT                                                       DG-Mesh                                                  4D-GS                                                    Ours
+       Img                         Mesh                     Surf.Render                Mesh                   Surf.Render                 Mesh                   Surf.Render                 Mesh                      
+Figure 3: Qualitative comparison on the DG-Mesh dataset. We present the visualizations of the reconstructed meshes and
+the rendered images. Our method demonstrates superior geometry and appearance compared to other baselines, which often
+display incomplete or noisy surfaces.
+Simultaneously, the Gaussian points across different time
+steps are constrained to adhere to the principle of local rigid-
+ity through ARAP regularization. For planar-based Gaussian
+splatting, we employ unbiased depth rendering to generate
+a planar distance map L and a normal map N, which are
+subsequently converted into an unbiased depth map. The
+distance normal map is then computed using this unbiased
+depth map. The difference between the distance normal map
+and the normal map obtained through rasterization is mini-
+mized through normal regularization, which ensures smooth
+geometric surfaces for dynamic objects, as demonstrated in
+Fig. 6 for ”w/o ARAP Reg”.
+Normal Regularization
+Inspired by PGSR (Chen et al. 2024), we leverage the un-
+biased depth rendering method based on 3DGS (Kerbl et al.
+2023). The normal map under the current viewpoint is ren-
+dered by α-blending:
+N =
+X
+i∈N
+TiRT
+c niαi, Ti =
+i−1Y
+j=1
+(1 − αj), (7)
+where Ti is the cumulative opacity, Rc denotes the rotation
+from the camera to the global world, and ni is the normal
+of the Gaussian. The distance from the camera center to the
+plane can be expressed asli = (RT
+c (µi −Tc))RT
+c nT
+i , where
+µi is the center of gaussian Gi and Tc is the camera center
+in the world. The distance map under the current viewpoint
+is rendered by α-blending:
+L =
+X
+i∈N
+Tiliαi, Ti =
+i−1Y
+j=1
+(1 − αj). (8)
+Subsequently, the unbiased depth map is obtained by divid-
+ing the distance map by the normal map:
+L(m) = L
+N(m)K−1 ˜m , (9)
+where m = [u, v]T represents the 2D coordinates on the im-
+age plane, ˜m denotes the homogeneous coordinate ofm, and
+K is the intrinsic of camera. Following (Long et al. 2024; Qi
+et al. 2020), we constrain the local consistency of depth and
+normals based on the assumption of local planarity, where
+a pixel and its neighbors approximate a plane. Based on the
+depth map obtained from Eq. 9, we sample four neighbor-
+ing points using a fixed template. With these known depths,
+we compute the normal of the plane and repeat this process
+for the entire image to generate the normal from the depth
+map. The difference between this normal map and the ren-
+dered normal map as Eq. 7 is then minimized using L1 loss
+to ensure geometric consistency between local depths and
+normals. However, points in the edge region may not satisfy
+the planarity assumption, and to deal with this problem, we
+use image edges to approximate geometric edges. Specifi-
+cally, for a pixel point m, we sample depth values from its
+four neighboring pixels (i.e., top, bottom, left, and right).
+
+=== PAGE 5 ===
+     GT(Img)                                             PGSR                                                                 4D-GS                                                                 Ours
+   Surf.Render                     Mesh                         Surf.Render                            Mesh                       Surf.Render                         Mesh               
+Figure 4: Qualitative comparison on the D-NeRF dataset. We present the visualizations of the reconstructed meshes and
+the rendering images. Our method demonstrates superior geometry and appearance compared to other baselines, which often
+display incomplete or noisy surfaces.
+These depth points are projected into the camera coordinate
+system to obtain the 3D points {M j|j = 1, ...,4}, and the
+local plane normal of pixel m is computed as follows:
+Nl(m) = (M1 − M0) × (M3 − M2)
+|(M1 − M0) × (M3 − M2)| , (10)
+Finally, the normal regularization is calculated as follows:
+Lnormal = 1
+W
+X
+m∈W
+∇I
+5
+∥ Nl(m) − N(m) ∥1, (11)
+where W denotes the set of image pixels and Nm is defined
+by Eq. 7. ∇I represents the image gradient normalized to a
+range of 0 to 1.
+ARAP Regularization
+To ensure the spatial consistency of a dynamic object across
+different time steps, we introduce the ARAP regulariza-
+tion Larap, which guarantees local rigidity during motion.
+For each Gaussian point i, compute its set of k-nearest-
+neighbors (k = 10 ). The influence of a neighboring Gaus-
+sian point j on Gaussian point i is represented by a weight
+wij, which decreases with increasing distance:
+wij = ˜wijP
+j∈K
+˜wij
+, where ˜wij = exp(− d2
+ij
+2o2
+j
+), (12)
+where K = knni;k , dij denotes the distance between
+the center of the Gaussian Gi and the neighboring Gaus-
+sian point Gj and oj is the learned radius parameter of Gj.
+To compute the ARAP regularization, we randomly sample
+two time steps t1 and t2. The deformation field is used to
+estimate the spatial positions µt1
+i , µt1
+j , µt2
+i , µt2
+j of the Gaus-
+sian points Gi and Gj at t1 and t2, respectively. The local
+rigid rotation matrix ˜Ri for Gaussian point Gi is estimated
+as following:
+˜Ri = arg min
+R∈SO(3)
+X
+j∈K
+wij||(µt1
+i −µt1
+j )−R(µt2
+i −µt2
+j )||2, (13)
+where R is a local frame rotation matrix as Eq. 2. The ARAP
+regularization, as illustrated in Fig .2, is computed as:
+Larap(µi, t1, t2) =
+X
+j∈K
+wij||(µt1
+i −µt1
+j )− ˜Ri(µt2
+i −µt2
+j )||2. (14)
+Optimization
+To optimize the deformation field, we utilize a combina-
+tion of photometric loss, total-variational loss (Sun, Sun,
+and Chen 2022; Fang et al. 2022; Cao and Johnson 2023)
+Ltv, normal regularization, and ARAP regularization. As
+depicted in Fig. 2, the photometric loss is computed as the
+L1 loss between the rendered image and the ground truth.
+Lphoto =∥ I − ˜I ∥1 . (15)
+The total training loss is a weighted sum of these loss terms:
+L = Lphoto + Ltv + λ1Lnormal + λ2Larap. (16)
+Between 7000 and 9000 iterations, λ1 and λ2 gradually in-
+crease, and after 9000 iterations, are set to 0.05 and 0.02,
+respectively.
+
+=== PAGE 6 ===
+Table 1: Metrics averaged over all scenes on the DG-Mesh
+dataset. ↑ means the higher, the better. Pink , orange , and
+yellow are used to indicate the best, second best, and third
+best, respectively. The rendering resolution is set to 800 x
+800. ∗ represents the results we achieved by running the
+open source DG-Mesh (Liu, Su, and Wang 2024).
+Method CD ↓ EMD ↓ PSNR ↑
+D-NeRF 1.252 0.184 27.739
+K-Plane 1.068 0.147 31.142
+HexPlane 1.954 0.155 30.103
+TiNeuV ox-B 2.451 0.173 31.428
+DG-Mesh 0.770 0.128 15 .774 ∗
+Our 0.910 0.123 32.508
+Experiments
+Datasets
+To validate the effectiveness of our method, we conducted
+experiments on the D-NeRF (Pumarola et al. 2021) and DG-
+Mesh (Liu, Su, and Wang 2024) datasets and Ub4D (John-
+son et al. 2023) dataset. The D-NeRF dataset is a synthetic
+dataset comprising eight dynamic scenes, each scene has its
+corresponding precise camera parameter and timestamp in-
+formation. These scenes consist of images with a resolution
+of 800×800 pixels, with each scene containing between 50 to
+200 images for training. DG-Mesh (Liu, Su, and Wang 2024)
+dataset contains six dynamic scenes, each with 200 training
+and test images. Ground truth meshes for each object are
+available, enabling quantitative and qualitative evaluations
+of the rendered meshes against the ground truth, thereby ver-
+ifying the validity of our approach. For real-world data, we
+evaluate our method on Ub4D dataset.
+Evaluation Criterion. We evaluated the performance of dy-
+namic view synthesis on three widely used image evaluation
+metrics, including the Peak Signal-to-Noise Ratio (PSNR),
+the Structural Similarity Index measure (SSIM), and the
+Learned Perceptual Image Patch Similarity (LPIPS) (Zhang
+et al. 2018). To evaluate the quality of surface reconstruction
+of dynamic objects, we utilize the Chamfer Distance (CD)
+and the Earth Mover Distance (EMD) to measure the devia-
+tion between the reconstructed mesh and the ground truth.
+Implementation Details. Our model was trained on a sin-
+gle RTX 3090 GPU for 20k iterations and fine-tuned the
+optimization parameters according to the configuration in
+3D-GS (Kerbl et al. 2023). We use the TSDF Fusion algo-
+rithm (Newcombe et al. 2011) to extract mesh and employ
+4D-GS (Wu et al. 2024) as our baseline. For more details,
+please refer to the supplementary material.
+Qualitative Comparisons
+To validate the effectiveness of our method, we conducted
+extensive qualitative comparison experiments on the D-
+NeRF (Pumarola et al. 2021), DG-Mesh (Liu, Su, and Wang
+Table 2: Metrics averaged over all scenes on the D-NeRF
+dataset. The rendering resolution is set to 800 x 800. The
+best results are bolded. Underline means second best.
+Method PSNR ↑ SSIM ↑ LPIPS ↓
+D-NeRF 30.43 0.9570 0.0704
+K-Plane 30.67 0.9672 0.0453
+HexPlane 31.02 0.9680 0.0392
+TiNeuV ox 31.35 0.9613 0.0519
+4D-GS 34.06 0.9787 0.0218
+DG-Mesh 23.00 0.9578 0.0522
+Ours 34.31 0.9797 0.0267
+2024), and Ub4D (Johnson et al. 2023) datasets. For the
+D-NeRF dataset, we present visualizations of both the mesh
+and rendered images in Fig. 1. While the RGB images ren-
+dered by 4D-GS (Wu et al. 2024) and MaGS (Ma, Luo, and
+Yang 2024) are visually comparable to our approach, the
+geometric surfaces of the reconstructed objects exhibit no-
+table roughness. Our method outperforms DG-Mesh in both
+rendering and reconstruction quality, particularly evident in
+the second row of Fig. 3. As shown in Fig. 4, PGSR (Chen
+et al. 2024) excels in reconstructing static scene geome-
+try, it fails to accurately reconstruct dynamic objects, such
+as the moving arm in the second row and the bucket in
+the fourth row (highlighted in red boxes). This shortcoming
+arises because PGSR considers only the spatial geometry of
+3D objects, neglecting the temporal information critical for
+dynamic scenes. Moreover, the geometric surfaces recon-
+structed by 4D-GS are considerably rough, particularly in
+the bucket, as the method prioritizes rendering quality over
+geometric accuracy. In contrast, our approach delivers supe-
+rior results in both dynamic surface reconstruction and im-
+age rendering. Fig. 3 shows the visualization comparison of
+our method with 4D-GS and the concurrent work DG-Mesh
+on the DG-Mesh dataset. Our method produces more accu-
+rate and smoother geometric surfaces, a result attributable
+to the implementation of normal regularization. The sur-
+faces generated by our method are significantly closer to the
+ground truth mesh compared to the rougher surfaces pro-
+duced by 4D-GS and DG-Mesh, particularly evident in the
+first and second rows. For real data, our method has better
+geometric detail than other baselines, especially in the dolls’
+eyes, as shown in Fig.5.
+Quantitative Comparisons
+In Tab. 1, we compare our method with several state-of-the-
+art methods, including D-NeRF (Pumarola et al. 2021), K-
+plane (Fridovich-Keil et al. 2023), HexPlane (Cao and John-
+son 2023), TiNeuV ox-B (Fang et al. 2022), DG-Mesh (Liu,
+Su, and Wang 2024) on the DG-Mesh dataset . As shown
+in Tab. 1, we calculated the average of the metrics CD and
+EMD for evaluating the mesh quality of all dynamic ob-
+ject surface reconstruction and the average of the PSNR
+for evaluating the quality of the rendered RGB images in
+
+=== PAGE 7 ===
+Table 3: Average metrics for all scene ablation study on the
+DG-Mesh dataset, with a rendering resolution set to 800
+x 800, our method achieves high-precise geometry while
+maintaining comparable high-quality images.
+Method CD ↓ EMD ↓ PSNR ↑
+baseline 0.618 0.114 41.53
+w/o ARAP Reg 0.617 0.111 40.57
+w/o Normal Reg 0.617 0.114 41.78
+Ours 0.609 0.110 40.74
+Table 4: Average metrics for all scene ablation study on the
+D-NeRF dataset. The rendering resolution is 800 x 800.
+Method PSNR ↑ SSIM↑ LPIPS↓
+Baseline 34.06 0.9787 0.0218
+w./ Normal Reg 33.93 0.9786 0.0268
+w./ Normal Reg + ARAP Reg 34.31 0.9797 0.0267
+the DG-Mesh dataset. For per-scene results of DG-Mesh
+dataset, please refer to the supplementary material. In Tab.
+1, our method generally achieves CD and EMD values com-
+parable to DGmesh, while our rendered images achieve op-
+timal PSNR values, indicating that our method is capable
+of achieving high-quality rendered images as well as high-
+fidelity reconstruction of dynamic object surfaces. Fig. 4
+also shows that our method achieves accurate dynamic sur-
+face reconstruction on the D-NeRF dataset.
+Ablation Studies
+Normal Regularization Normal regularization signifi-
+cantly enhances the smoothness of geometric surfaces and
+provides a robust geometric initialization. As illustrated
+in Fig. 6, normal regularization is essential for accurate
+geometric reconstruction, as seen in the ”w/o ARAP Reg”
+scenario. However, it is observed that normal regularization
+slightly reduces the PSNR of the rendered images compared
+to the baseline, as shown in Tab. 3. To address this issue
+while maintaining rigid body consistency across different
+moments, we introduce ARAP regularization.
+ARAP Regularization The experiments conducted on the
+D-NeRF (Pumarola et al. 2021) dataset, presented in Tab.
+4, shows that the results for ” w./ Normal Reg” degrade in
+performance when ARAP regularization is excluded, which
+validates the effectiveness of the ARAP constraint. In Tab. 3,
+the results for ”w/o Normal Reg” indicate that while the best
+PSNR value is achieved using only ARAP regularization,
+the CD and EMD values are poor, indicating that although
+the rendered images are high-quality, the reconstructed
+geometries are suboptimal, as further confirmed in Fig. 6 for
+”w/o Normal Reg”. Therefore, the combination of ARAP
+and normal regularization is crucial for producing photo-
+realistic images while reconstructing high-fidelity geometry.
+0017.png
+         GT                                             Ub4D                                     DG-Mesh                                   Ours                                      
+Figure 5: Qualitative comparison on the Ub4D dataset.
+We provide the visualizations of the reconstructed meshes
+on the real data. Compared to other methods, our method is
+better at reconstructing geometric details such as eyes.
+      Baseline                       w/o ARAP Reg                     w/o Normal Reg                      Ours             
+Figure 6: Ablation study on the DG-Mesh dataset. Using
+only the ARAP regularization results in a rough surface for
+the reconstructed geometry, whereas relying solely on nor-
+mal regularization produces a smoother geometric surface
+but compromises the quality of the rendered 2D images, as
+evidenced in Tab. 3. The integration of both ARAP and nor-
+mal regularization produces high-fidelity dynamic surface
+reconstruction and photorealistic rendered images.
+Limitations and Future Work
+While our method achieves highly accurate geometric re-
+construction and produces photorealistic images, several
+challenges persist. Firstly, our regularization often requires
+a trade-off between image quality and geometry accuracy,
+which can sometimes lead to over-smoothing in certain ar-
+eas. Future research could explore adaptive regularization
+methods that dynamically adjust parameters based on local
+image features, aiming to prevent excessive smoothing while
+maintaining image quality. Secondly, areas with missing or
+limited views cannot be fully reconstructed geometrically,
+resulting in incomplete or less accurate geometry. To ad-
+dress this, integrating large-scale pre-trained diffusion mod-
+els to generate geometries from unseen viewpoints could be
+a promising direction for further investigation.
+Conclusion
+In this work, we present DynaSurfGS, a novel method for
+reconstructing high-accuracy geometry and rendering high-
+quality images of dynamic objects from a monocular video.
+Our approach leverages planar-based Gaussian splatting
+to obtain unbiased depth maps, which are subsequently
+used to constrain the smooth reconstruction of geometric
+surfaces for dynamic objects through normal regularization.
+Additionally, we incorporate ARAP regularization to main-
+tain spatial consistency by constraining rigid body motion
+across different moments. We validated the effectiveness of
+
+=== PAGE 8 ===
+our method on the D-NeRF, DG-Mesh, and Ub4D datasets
+with extensive experiments that demonstrated its superior
+performance compared to existing baselines.
+References
+Cao, A.; and Johnson, J. 2023. Hexplane: A fast represen-
+tation for dynamic scenes. In Proceedings of the IEEE/CVF
+Conference on Computer Vision and Pattern Recognition ,
+130–141.
+Chen, D.; Li, H.; Ye, W.; Wang, Y .; Xie, W.; Zhai, S.; Wang,
+N.; Liu, H.; Bao, H.; and Zhang, G. 2024. PGSR: Planar-
+based Gaussian Splatting for Efficient and High-Fidelity
+Surface Reconstruction. arXiv preprint arXiv:2406.06521.
+Du, Y .; Zhang, Y .; Yu, H.-X.; Tenenbaum, J. B.; and Wu, J.
+2021. Neural radiance flow for 4d view synthesis and video
+processing. In 2021 IEEE. In CVF International Conference
+on Computer Vision (ICCV), 14304–14314.
+Fang, J.; Yi, T.; Wang, X.; Xie, L.; Zhang, X.; Liu, W.;
+Nießner, M.; and Tian, Q. 2022. Fast dynamic radiance
+fields with time-aware neural voxels. In SIGGRAPH Asia
+2022 Conference Papers, 1–9.
+Fridovich-Keil, S.; Meanti, G.; Warburg, F. R.; Recht, B.;
+and Kanazawa, A. 2023. K-Planes: Explicit Radiance Fields
+in Space, Time, and Appearance. In IEEE/CVF Conference
+on Computer Vision and Pattern Recognition, CVPR 2023,
+V ancouver , BC, Canada, June 17-24, 2023 , 12479–12488.
+IEEE.
+Gu´edon, A.; and Lepetit, V . 2024. Sugar: Surface-aligned
+gaussian splatting for efficient 3d mesh reconstruction
+and high-quality mesh rendering. In Proceedings of the
+IEEE/CVF Conference on Computer Vision and Pattern
+Recognition, 5354–5363.
+Huang, B.; Yu, Z.; Chen, A.; Geiger, A.; and Gao, S. 2024a.
+2d gaussian splatting for geometrically accurate radiance
+fields. In ACM SIGGRAPH 2024 Conference Papers, 1–11.
+Huang, Y .-H.; Sun, Y .-T.; Yang, Z.; Lyu, X.; Cao, Y .-P.;
+and Qi, X. 2024b. Sc-gs: Sparse-controlled gaussian splat-
+ting for editable dynamic scenes. In Proceedings of the
+IEEE/CVF Conference on Computer Vision and Pattern
+Recognition, 4220–4230.
+Johnson, E.; Habermann, M.; Shimada, S.; Golyanik, V .; and
+Theobalt, C. 2023. Unbiased 4d: Monocular 4d reconstruc-
+tion with a neural deformation model. In Proceedings of
+the IEEE/CVF Conference on Computer Vision and Pattern
+Recognition, 6598–6607.
+Kerbl, B.; Kopanas, G.; Leimk ¨uhler, T.; and Drettakis, G.
+2023. 3D Gaussian Splatting for Real-Time Radiance Field
+Rendering. ACM Trans. Graph., 42(4): 139–1.
+Li, H.; Ye, W.; Zhang, G.; Zhang, S.; and Bao, H. 2020.
+Saliency guided subdivision for single-view mesh recon-
+struction. In 2020 International Conference on 3D Vision
+(3DV), 1098–1107. IEEE.
+Liu, I.; Su, H.; and Wang, X. 2024. Dynamic Gaussians
+Mesh: Consistent Mesh Reconstruction from Monocular
+Videos. arXiv preprint arXiv:2404.12379.
+Liu, X.; Ye, W.; Tian, C.; Cui, Z.; Bao, H.; and Zhang, G.
+2021. Coxgraph: multi-robot collaborative, globally consis-
+tent, online dense reconstruction system. In 2021 IEEE/RSJ
+International Conference on Intelligent Robots and Systems
+(IROS), 8722–8728. IEEE.
+Long, X.; Zheng, Y .; Zheng, Y .; Tian, B.; Lin, C.; Liu, L.;
+Zhao, H.; Zhou, G.; and Wang, W. 2024. Adaptive surface
+normal constraint for geometric estimation from monocular
+images. IEEE Transactions on Pattern Analysis and Ma-
+chine Intelligence.
+Lu, Z.; Guo, X.; Hui, L.; Chen, T.; Yang, M.; Tang, X.; Zhu,
+F.; and Dai, Y . 2024. 3d geometry-aware deformable gaus-
+sian splatting for dynamic view synthesis. In Proceedings of
+the IEEE/CVF Conference on Computer Vision and Pattern
+Recognition, 8900–8910.
+Luiten, J.; Kopanas, G.; Leibe, B.; and Ramanan, D. 2023.
+Dynamic 3d gaussians: Tracking by persistent dynamic view
+synthesis. arXiv preprint arXiv:2308.09713.
+Ma, S.; Luo, Y .; and Yang, Y . 2024. Reconstructing and Sim-
+ulating Dynamic 3D Objects with Mesh-adsorbed Gaussian
+Splatting. arXiv preprint arXiv:2406.01593.
+Newcombe, R. A.; Izadi, S.; Hilliges, O.; Molyneaux, D.;
+Kim, D.; Davison, A. J.; Kohi, P.; Shotton, J.; Hodges, S.;
+and Fitzgibbon, A. 2011. Kinectfusion: Real-time dense sur-
+face mapping and tracking. In 2011 10th IEEE international
+symposium on mixed and augmented reality , 127–136. Ieee.
+Park, K.; Sinha, U.; Barron, J. T.; Bouaziz, S.; Goldman,
+D. B.; Seitz, S. M.; and Martin-Brualla, R. 2021a. Nerfies:
+Deformable neural radiance fields. In Proceedings of the
+IEEE/CVF International Conference on Computer Vision ,
+5865–5874.
+Park, K.; Sinha, U.; Hedman, P.; Barron, J. T.; Bouaziz,
+S.; Goldman, D. B.; Martin-Brualla, R.; and Seitz, S. M.
+2021b. Hypernerf: A higher-dimensional representation for
+topologically varying neural radiance fields. arXiv preprint
+arXiv:2106.13228.
+Pumarola, A.; Corona, E.; Pons-Moll, G.; and Moreno-
+Noguer, F. 2021. D-nerf: Neural radiance fields for dynamic
+scenes. In Proceedings of the IEEE/CVF Conference on
+Computer Vision and Pattern Recognition, 10318–10327.
+Qi, X.; Liu, Z.; Liao, R.; Torr, P. H.; Urtasun, R.; and Jia,
+J. 2020. Geonet++: Iterative geometric neural network with
+edge-aware refinement for joint depth and surface normal
+estimation. IEEE Transactions on Pattern Analysis and Ma-
+chine Intelligence, 44(2): 969–984.
+Sun, C.; Sun, M.; and Chen, H.-T. 2022. Direct voxel grid
+optimization: Super-fast convergence for radiance fields re-
+construction. In Proceedings of the IEEE/CVF conference
+on computer vision and pattern recognition , 5459–5469.
+Tang, Z.; Ye, W.; Wang, Y .; Huang, D.; Bao, H.; He, T.;
+and Zhang, G. 2024. ND-SDF: Learning Normal Deflec-
+tion Fields for High-Fidelity Indoor Reconstruction. arxiv
+preprint.
+Wu, G.; Yi, T.; Fang, J.; Xie, L.; Zhang, X.; Wei, W.; Liu,
+W.; Tian, Q.; and Wang, X. 2024. 4d gaussian splatting
+for real-time dynamic scene rendering. In Proceedings of
+
+=== PAGE 9 ===
+the IEEE/CVF Conference on Computer Vision and Pattern
+Recognition, 20310–20320.
+Xian, W.; Huang, J.-B.; Kopf, J.; and Kim, C. 2021. Space-
+time neural irradiance fields for free-viewpoint video. In
+Proceedings of the IEEE/CVF conference on computer vi-
+sion and pattern recognition, 9421–9431.
+Yang, Z.; Gao, X.; Zhou, W.; Jiao, S.; Zhang, Y .; and Jin,
+X. 2024. Deformable 3d gaussians for high-fidelity monoc-
+ular dynamic scene reconstruction. In Proceedings of the
+IEEE/CVF Conference on Computer Vision and Pattern
+Recognition, 20331–20341.
+Ye, W.; Chen, X.; Zhan, R.; Huang, D.; Huang, X.; Zhu, H.;
+Bao, H.; Ouyang, W.; He, T.; and Zhang, G. 2024a. DATAP-
+SfM: Dynamic-Aware Tracking Any Point for Robust Dense
+Structure from Motion in the Wild. arxiv preprint.
+Ye, W.; Lan, X.; Chen, S.; Ming, Y .; Yu, X.; Bao, H.; Cui,
+Z.; and Zhang, G. 2023. PVO: Panoptic Visual Odometry.
+In Proceedings of the IEEE/CVF Conference on Computer
+Vision and Pattern Recognition (CVPR), 9579–9589.
+Ye, W.; Li, H.; Gao, Y .; Dai, Y .; Chen, J.; Dong, N.; Zhang,
+D.; Bao, H.; Ouyang, W.; Qiao, Y .; He, T.; and Zhang, G.
+2024b. FedSurfGS: Scalable 3D Surface Gaussian Splat-
+ting with Federated Learning for Large Scene Reconstruc-
+tion. arxiv preprint.
+Ye, W.; Yu, X.; Lan, X.; Ming, Y .; Li, J.; Bao, H.; Cui, Z.;
+and Zhang, G. 2022. Deflowslam: Self-supervised scene
+motion decomposition for dynamic dense slam. arXiv
+preprint arXiv:2207.08794.
+Zhang, R.; Isola, P.; Efros, A. A.; Shechtman, E.; and Wang,
+O. 2018. The unreasonable effectiveness of deep features as
+a perceptual metric. In Proceedings of the IEEE conference
+on computer vision and pattern recognition , 586–595.
+Zwicker, M.; Pfister, H.; Van Baar, J.; and Gross, M. 2001.
+Surface splatting. In Proceedings of the 28th annual con-
+ference on Computer graphics and interactive techniques ,
+371–378.
+
+=== PAGE 10 ===
+Oultine
+In the supplementary file, we provide more implementation
+details and more results not elaborated in our paper due to
+this paper length limit:
+• Sec. S1: per-scene qualitative experiments.
+• Sec. S2: per-scene quantitative experiments.
+• Sec. S3: more implementation details.
+S1. Per-scene qualitative experimennts
+We produced a 360-degree video showcasing the rendered
+images and meshes of the dynamic objects reconstructed
+by our approach, along with comparative results from DG-
+Mesh (Liu, Su, and Wang 2024) and 4D-GS (Wu et al.
+2024). Fig. S2.1 and Fig. S2.2 present screenshots from
+the video on the D-NeRF (Pumarola et al. 2021) and DG-
+Mesh (Liu, Su, and Wang 2024) datasets, respectively, with
+the full video available in the video file. As shown in Fig.
+S2.1, the D-NeRF (Pumarola et al. 2021) dataset lacks
+ground truth meshes, so an input image is used as the ground
+truth. DG-Mesh reconstructs the surface of a dynamic ob-
+ject that is not smooth enough, and the rendered image is
+blurred. While 4D-GS renders high-quality RGB images, the
+reconstructed geometric surfaces are rough and even incom-
+plete. In contrast, our method demonstrates superior per-
+formance by producing high-quality rendered images and
+precise dynamic surface reconstructions. Fig. S2.2 further
+demonstrates that our method achieves both high-quality im-
+age rendering and dynamic surface reconstruction compared
+to DG-Mesh and 4D-GS.
+S2. Per-scene quantitative experiments
+Quantitative experiments on the averages of the D-NeRF
+(Pumarola et al. 2021) and DG-Mesh (Liu, Su, and Wang
+2024) datasets have been presented in the main text, and
+the results of the quantitative experiments on a scene-by-
+scene are presented here. Tab. S1.1 illustrates the quanti-
+tative results of our method compared to existing methods
+on the DG-Mesh (Liu, Su, and Wang 2024) dataset. ∗ de-
+notes the results obtained by running the open-source DG-
+Mesh (Liu, Su, and Wang 2024) code. As shown in Tab.
+S1.1, our method outperforms DG-Mesh (Liu, Su, and Wang
+2024) across most quantitative metrics for dynamic surface
+reconstruction. In particular, for the rendering image quality
+method, the average of our method is2 times better than DG-
+Mesh. Since the D-NeRF dataset does not have the ground
+truth meshes, we quantitatively evaluate the rendered image
+in the D-NeRF dataset. Tab. S1.2 demonstrates that the im-
+age quality rendered by our method generally surpasses that
+of 4D-GS (Wu et al. 2024). Moreover, the dynamic meshes
+produced by our approach are significantly smoother than
+those generated by 4D-GS, as depicted in Fig. S2.1. In ad-
+dition, we conducted ablation experiments on the D-NeRF
+dataset for all objects, as shown in Tab. S1.3.
+S3. Implementation details
+Given that each moment in the D-NeRF (Pumarola et al.
+2021) dataset provides only a single viewpoint image, we
+constructed multiple virtual camera views at each moment
+to render the RGB images and corresponding depth maps
+for each training view. Then, we use the TSDF Fusion algo-
+rithm (Newcombe et al. 2011) to extract mesh. In our paper,
+we use 10−3 as the default unit for the Chamfer Distance.
+
+=== PAGE 11 ===
+GT                        Ours                      DG-Mesh               4D-GS
+GT                         Ours                      DG-Mesh                   4D-GS
+
+
+=== PAGE 12 ===
+GT                          Ours                  DG-Mesh                     4D-GS
+Figure S2.1: Per-scene qualitative experiments on the D-NeRF (Pumarola et al. 2021) dataset.
+GT                         Ours                      DG-Mesh                   4D-GS
+
+
+=== PAGE 13 ===
+GT                         Ours                      DG-Mesh                   4D-GS
+Figure S2.2: Per-scene qualitative experiments on the DG-Mesh (Liu, Su, and Wang 2024) dataset.
+Table S1.1: The qualitative comparison of our method with existing methods on the DG-Mesh (Liu, Su, and Wang 2024)
+dataset, ↑ means the higher, the better. Pink , orange , and yellow are used to indicate the best, second best, and third best,
+respectively. The rendering resolution is set to 800 x 800. ∗ represents the results we achieved by running the open source
+DG-Mesh code (Liu, Su, and Wang 2024).
+Method Beagle Girlwalk Duck
+CD↓ EMD↓ PSNR↑ CD↓ EMD↓ PSNR↑ CD↓ EMD↓ PSNR↑
+D-NeRF 1.001 0.149 34.470 0.601 0.190 28.6320.934 0.073 29.785K-Plane0.810 0.12238.3290.495 0.17332.116 1.0850.05533.360HexPlane 0.8700.115 38.034 0.5970.155 31.771 2.161 0.090 32.108TiNeuV ox-B 0.874 0.12938.9720.568 0.18432.806 0.969 0.05934.326DG-Mesh0.6390.11716.135∗ 0.7260.13617.525∗ 0.7900.04716.511∗
+Our 0.6090.11040.7440.4430.12833.3080.8060.04736.310
+Method Horse Bird Torus2sphere
+CD↓ EMD↓ PSNR↑ CD↓ EMD↓ PSNR↑ CD↓ EMD↓ PSNR↑
+D-NeRF 1.685 0.280 25.4741.532 0.163 23.8481.760 0.250 24.227K-Plane1.480 0.23928.1110.7420.13123.722 1.7930.16131.215HexPlane 1.7500.199 26.799 4.158 0.178 22.189 2.190 0.19029.714TiNeuV ox-B 1.918 0.24628.161 8.264 0.21525.546 2.115 0.203 28.756DG-Mesh0.2990.16815.484∗ 0.5570.12817.151∗ 1.6070.17211.835∗
+Our 0.2960.14528.680 1.6310.13826.8761.6750.17129.131
+
+=== PAGE 14 ===
+Table S1.2: Per-scene quantitative experiments on the D-NeRF (Pumarola et al. 2021) dataset.
+Method Bouncingballs Hook Hellwarrior JumpingjacksPSNR↑SSIM↑LPIPS↓PSNR↑SSIM↑LPIPS↓PSNR↑SSIM↑LPIPS↓PSNR↑SSIM↑LPIPS↓D-NeRF 38.93 0.987 0.1074 29.25 0.968 0.1120 25.02 0.955 0.0633 32.80 0.981 0.0381K-Plane 40.05 0.9934 0.0322 28.12 0.9489 0.0662 24.58 0.9520 0.0824 31.11 0.9708 0.0468HexPlane 39.86 0.9915 0.0323 28.63 0.9572 0.0505 24.55 0.9443 0.0732 31.31 0.9729 0.0398TiNeuV ox 40.23 0.9926 0.0416 28.63 0.9433 0.0636 27.10 0.9638 0.0768 33.49 0.9771 0.04084D-GS 40.62 0.9942 0.0155 32.73 0.97600.027228.71 0.9733 0.0369 35.42 0.98570.0128DG-Mesh 23.15 0.9727 0.0658 22.12 0.9486 0.0555 19.57 0.9227 0.0732 26.29 0.9710 0.0458Ours 40.92 0.9948 0.0139 32.97 0.97730.027729.45 0.9758 0.0360 35.49 0.98640.0202
+Method Mutant Standup Trex LegoPSNR↑SSIM↑LPIPS↓PSNR↑SSIM↑LPIPS↓PSNR↑SSIM↑LPIPS↓PSNR↑SSIM↑LPIPS↓D-NeRF 31.29 0.978 0.0212 32.79 0.983 0.0241 31.75 0.974 0.0367 21.64 0.83 0.16K-Plane 32.50 0.9713 0.0362 33.10 0.9793 0.0310 30.43 0.9737 0.034325.49 0.9483 0.0331HexPlane 33.67 0.9802 0.0261 34.40 0.9839 0.0204 30.67 0.9749 0.0273 25.10 0.9388 0.0437TiNeuV ox 30.87 0.9607 0.0474 34.61 0.9797 0.0326 31.25 0.9666 0.0478 24.65 0.9063 0.06484D-GS 37.59 0.98800.016738.11 0.98980.0138 34.23 0.9850 0.013125.03 0.9376 0.0382DG-Mesh 22.45 0.9609 0.0391 24.12 0.9676 0.0350 23.29 0.9611 0.0512 22.32 0.0908 0.0565Ours 38.61 0.99030.015037.76 0.98840.0191 34.21 0.9848 0.0230 25.02 0.9374 0.0583
+Table S1.3: Per-scene ablation studies on the D-NeRF dataset
+Method Bouncingballs Hook Hellwarrior JumpingjacksPSNR↑SSIM↑LPIPS↓PSNR↑SSIM↑LPIPS↓PSNR↑SSIM↑LPIPS↓PSNR↑SSIM↑LPIPS↓Baseline 40.62 0.9942 0.0155 32.73 0.97600.027228.71 0.9733 0.0369 35.42 0.98570.0128w./ Normal Reg 40.05 0.9945 0.0142 32.71 0.9765 0.0282 29.14 0.9749 0.0365 35.24 0.9855 0.0208w./ Normal + ARAR Reg40.92 0.9948 0.0139 32.97 0.97730.027729.45 0.9758 0.0360 35.49 0.98640.0202
+Method Standup Mutant Trex LegoPSNR↑SSIM↑LPIPS↓PSNR↑SSIM↑LPIPS↓PSNR↑SSIM↑LPIPS↓PSNR↑SSIM↑LPIPS↓Baseline 38.11 0.98980.013837.59 0.98800.0167 34.23 0.9850 0.0131 25.03 0.9376 0.0382w./ Normal Reg 38.12 0.9898 0.0155 37.26 0.9864 0.0195 33.90 0.9841 0.0231 25.01 0.9371 0.0567w./ Normal + ARAR Reg38.61 0.99030.015037.76 0.98840.0191 34.21 0.9848 0.0230 25.02 0.9374 0.0583
