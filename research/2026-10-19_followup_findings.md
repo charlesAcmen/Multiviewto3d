@@ -2,6 +2,8 @@
 
 日期：2026-10-19。本文件在继续检索时逐批写入。证据等级沿用主报告：P 论文，C 代码，I 推断，H 假设，M 本机实测。本轮仍无训练实测。
 
+> **第三轮状态覆盖：**GSNSR正文现已成功下载并核读§4.1–4.2；新增SSP全文、NeRF2Mesh全文及CASA-SDF训练峰值9.97GB证据。详情见 [当前核心方案](./2026-10-19_core_algorithm_proposal.md)。下文“GSNSR未取得”和位姿课题为本文件当时状态，保留历史，不代表当前仍缺该PDF。
+
 ## 批次 1：新增反例，先收窄贡献
 
 - 已成功下载并提取 **UA-Pose（CVPR 2025）**与 **ManifoldNeuS（CVPR 2026）**正式论文，位于 `evidence/uapose.pdf` 和 `evidence/manifoldneus.pdf`；前一轮的 ManifoldNeuS 全文访问缺口已补上。

@@ -1,0 +1,662 @@
+                             This WACV paper is the Open Access version, provided by the Computer Vision Foundation.
+                                          Except for this watermark, it is identical to the accepted version;
+                                    the final published version of the proceedings is available on IEEE Xplore.
+
+
+
+
+           SSP: Semi-signed prioritized neural fitting for surface reconstruction
+                             from unoriented point clouds
+
+                        Runsong Zhu1 * Di Kang2 Ka-Hei Hui1 Yue Qian2 Shi Qiu1
+                       Zhen Dong3† Linchao Bao2 Pheng-Ann Heng1 Chi-Wing Fu1
+                1
+                  The Chinese University of Hong Kong 2 Tencent AI Lab 3 Wuhan University
+
+
+   Coarse shape                           Ambiguity                                              Fine structure
+                                                                                         1.0
+
+                                                                                         0.8
+
+                                                                                         0.6
+
+                                                                                         0.4
+
+                                                                                         0.2
+
+          GT              SAL            (i) Unsigned dist. GT (ii) SDF from SAL         0.0
+
+                                                                                         -0.2
+
+                                                                                         -0.4
+
+                                                                                         -0.6
+
+                                                                                         -0.8
+
+                                                                                         -1.0
+
+                                         (iii) Abs. value of (ii)   (iv) SDF from Ours
+         DiGS             Ours                                                                          SAL               DiGS               Ours
+   (a)                                   (b)                                                      (c)
+Figure 1. (A): Existing methods occasionally suffer from finding the coarse shape. (B): A 2D example to illustrate the “ghost” surface
+issue. Using GT unsigned distance field B-i as optimization objective, SAL [2] yields an SDF with undesired surfaces B-ii. However, its
+corresponding absolute-valued distance field B-iii is very close to its GT B-i, which means there is (almost) no loss to minimize. Our method
+does not suffer from this issue and produces a correct SDF B-iv due to the help of signed supervision in the “outside” region. (C): The error
+maps of our method and baselines [2, 14]. The red color denotes a larger one-way Chamfer distance. Thanks to the proposed loss-based
+per-region sampling and progressive position encoding, our method reconstructs more accurate surfaces for complicated regions.
+
+                             Abstract                                                           sampling rate of each voxel according to the tracked recon-
+                                                                                                struction loss, so that the network can focus more on the
+    Reconstructing 3D geometry from unoriented point clouds                                     complicated under-fitting regions. We conduct extensive ex-
+can benefit many downstream tasks. Recent shape modeling                                        periments to demonstrate that our method achieves state-of-
+methods mostly adopt implicit neural representation to fit                                      the-art performance compared to the existing fitting-based
+a signed distance field (SDF) and optimize the network by                                       methods and comparable performance to learning-based
+unsigned supervision. However, these methods occasionally                                       methods on multiple datasets. The code is publicly available
+have difficulty in finding the coarse shape for complicated                                     at https://github.com/Runsong123/SSP.
+objects, especially suffering from the “ghost” surfaces (i.e.,
+fake surfaces that should not exist). To guide the network                                      1. Introduction
+quickly fit the coarse shape, we propose to utilize the signed
+supervision in regions that are obviously outside the object                                        Surface reconstruction from unoriented point clouds is a
+and can be easily determined, resulting in our semi-signed                                      long-standing fundamental task for many downstream appli-
+supervision. To better recover high-fidelity details, a novel                                   cations in computer vision, computer graphics, and AR/VR.
+loss-based region sampling strategy and a progressive po-                                       However, due to the unstructured data format of point clouds,
+sitional encoding (PE) method are applied to prioritize the                                     it remains challenging to reconstruct accurate surfaces for
+optimization towards underfitting and complicated regions.                                      complicated topology-agnostic objects.
+Specifically, we voxelize and partition the object space into                                       Among various approaches, implicit methods have gained
+sign-known and sign-uncertain regions, in which different                                       increasing interest as they can reconstruct smooth and high-
+supervisions are applied. Besides, we adaptively adjust the                                     fidelity surfaces. Traditional implicit methods reconstruct
+                                                                                                surfaces by calculating global (e.g., RBF [10], SPSR [25])
+   * Work partially done during an internship at Tencent AI Lab.                                or local (e.g., IMLS [40]) implicit functions. However, these
+   † Corresponding author.                                                                      methods suffer from cumbersome pre-processing (e.g., de-
+
+
+
+                                                                                          3769
+noising, upsampling, normal estimation, normal orientation,          local minimums, LRS helps the network focus on the details
+etc.), among which accurately oriented normals contribute            without suffering from severe ghost surface issues. Consid-
+a lot to high-quality reconstructions. Unfortunately, it is          ering that MLP may have difficulty in fitting high-frequency
+notoriously hard to compute orientation information from             signals [42], we explore progressive positional encoding
+point clouds [7], thus limiting these methods’ applicability.        (PE) to further improve the reconstruction details.
+    Recently, significant progress [1–3, 5, 14, 17, 37] has been         Overall, we propose semi-signed prioritized (SSP) neural
+made in directly optimizing an implicit function (e.g., SDF)         fitting for more stable and accurate surface reconstruction
+from unoriented point clouds. For example, [1–3, 5, 14, 17]          from raw point clouds. To evaluate its effectiveness, we
+explore unsigned supervision (due to lack of GT except               conduct extensive experiments. Compared to existing neu-
+the points) to optimize the neural network and demonstrate           ral fitting methods, our SSP achieves state-of-the-art accu-
+promising reconstruction results. If the optimization process        racy on multiple datasets, including the ABC subset [15]
+goes well, the neural network will fit a coarse shape (e.g.,         and various challenging data (i.e., objects with complicated
+an overly-smoothed hull of the object) at the early stage            structures [44], objects with varying sampling density [18],
+and then recover the fine structures. Although substantial           and objects with sampling noise [18]). We also conduct
+improvements have been achieved by existing methods [2,              several experiments to show that our proposed signed super-
+3, 14, 17], there remain several challenges that prevent them        vision can be adopted in existing methods (e.g., IGR [17]
+from producing high-quality reconstructions.                         and DiGS [6]) to boost their accuracy. In addition, we pro-
+    First, most existing methods occasionally have difficulty        vide experiments to reveal the difficulty of optimization from
+in finding coarse shapes for complicated objects, leading to         unoriented point clouds.
+the production of “ghost” surfaces (i.e., fake surfaces that             Our contributions are summarized as follows:
+should not exist) in undesired locations and large errors (see           • We propose a new semi-signed fitting module that pro-
+Fig. 1(a)). This implies that the existing unsigned supervi-               vides additional signed supervision, which significantly
+sion may not be able to provide sufficient guidance, so as the             alleviates the difficulty in finding coarse shapes for
+network occasionally gets stuck at bad local minimums and                  complicated objects.
+generates ghost structures. A 2D synthetic example is shown              • We introduce a loss-based per-region sampling and pro-
+in Fig. 1(b). It satisfies the unsigned distance supervision [2]           gressive PE, resulting in accurate surfaces with more
+very well but a fake surface still appears, which means using              details while generating fewer artifacts.
+only unsigned distance supervision is insufficient for certain           • We propose semi-signed prioritized (SSP) neural fitting,
+cases. The second issue we observe is that most existing                   achieving improved performances compared to existing
+methods tend to reconstruct over-smoothing surfaces in com-                neural fitting methods on multiple datasets, especially
+plicated regions (e.g., containing details in different levels)            with significant CD-L1 reduction (e.g., 20% improve-
+and ignore some fine structures (see, e.g., Fig. 1(c)).                    ment over previous state-of-the-art (i.e., DiGS [6]) on
+                                                                           ABC subset [15]).
+    In this paper, we make a step toward overcoming those
+two problems. For the “ghost-surface” problem, we propose            2. Related Work
+a simple yet effective solution by introducing an extra coarse
+signed supervision. The insight is that signed supervision               Reconstructing surfaces from unoriented point clouds
+is more informative and we can apply signed supervision              is a long-standing problem. Here, we review the existing
+to regions that are apparently “outside” the target object.          methods from traditional methods to learning-based and
+Specifically, we propose a novel semi-signed fitting module,         fitting-based neural methods.
+which simultaneously provides coarse signed supervisions             Traditional methods. Early methods address the recon-
+and unsigned supervisions for different regions determined           struction task based on either handcrafted heuristics or nu-
+by our automatic space partitioning algorithm. With the              merical optimizations. In particular, some adopt heuristic
+additional signed guidance, the network can quickly fit a            guidance to progressively build and refine the reconstructed
+coarse shape to the given point cloud in the early stage, thus       surface, such as growing triangulation [8, 38] and deform-
+having higher chance in avoiding potential sub-optimal local         ing an initial template mesh [27, 39]. Yet, these methods
+minimums (within the computation budget). For the lack of            are sensitive to hyperparameters and initialization, requir-
+details, we propose a new importance sampling strategy to            ing careful and time-consuming tuning on each point cloud.
+increase the optimization efficiency and utilize progressive         Some other methods [10,23–25,31,40] assume that the point
+positional encoding to better recover the details. Specifically,     cloud comes with a consistently-aligned normal field. How-
+we design a new loss-based region sampling (LRS) strategy            ever, it is highly non-trivial to obtain accurate orientation
+that tracks the losses in the full 3D space and adaptively           information for point clouds [21, 37]. The final surface can
+increases the sampling density of regions with larger losses.        be reconstructed by solving a Poisson equation [24,25] or cal-
+As the semi-signed fitting module can effectively avoid bad          culating a signed distance function using RBF [10], moving
+
+
+
+                                                                   3770
+least squares [40], Fourier coefficients [23], or wavelets [31].     existence of degenerated structures.
+
+Learning-based neural implicit methods. Recently, neu-               3.1. Revisiting unsigned supervision
+ral implicit function [12, 32, 35] has shown its superior-
+                                                                        Prior to our improvements in Sec. 3.2-3.4, we first revisit
+ity in representing 3D shapes. With the access to large
+                                                                     existing supervisions (losses) and discuss their limitations.
+shape data, such as ShapeNet [11] and Thingi10k [44],
+                                                                     The existing supervisions can be categorized into on-surface
+[4,15,16,22,28,29,32,33,35] propose to learn a data prior en-
+                                                                     and off-surface supervisions.
+coded in a neural implicit function for surface reconstruction
+from a point cloud. The reconstructed surface can be ob-             On-surface supervision. On-surface distance loss
+tained by applying the trained model to a new point cloud. To        Lon
+                                                                       dist [17] encourages the extracted zero-level set to contain
+enhance the generalization of the learned prior, [4,16, 22, 29]      the existing points in given point clouds:
+                                                                                                  X
+propose to learn local priors. One major advantage of these                              Lon
+                                                                                           dist =     ||fθ (p)||.               (2)
+learning-based methods (compared to fitting-based methods)                                         p∈P
+is the fast inference speed. However, their accuracy may de-         The on-surface unoriented derivative loss Lon grad [3] con-
+grade severely if some characteristic (e.g., shape, sampling         strains ∇fθ (p) with the given unoriented surface normal
+density, total number of points, etc.) of test point cloud is        np at p:
+obviously different from the training samples.                                 X
+                                                                      Lon
+                                                                        grad =     min{||∇fθ (p) − np ||, ||∇fθ (p) + np ||}, (3)
+Fitting-based neural implicit methods. Instead of utiliz-                       p∈P
+ing a data-driven prior, another stream of works attempts to         where ∇fθ (p) is the derivative of the network in point p.
+leverage the neural network as a universal function approx-
+imator to solve an optimization for each point cloud input.          Off-surface supervision. SAL [2] supervises the SDF pre-
+These methods optimize one network per object to implicitly          dictions fθ (q) with unsigned distance d, approximated with
+encode a signed distance field (SDF) whose zero-level set            unsigned distance from q to its closest point in P:
+                                                                                   X
+represents the reconstructed surface. Some recent works                 Lfree
+                                                                          dist =         min{||fθ (q) − d||, ||fθ (q) + d||}. (4)
+propose to utilize various unsigned supervision to optimize                       q∈R3 \P
+the SDF [2, 3, 14, 17], such as unsigned distance, unsigned          Besides, IGR [17] utilizes the Eikonal regularization [13],
+normal, etc. Other methods [1, 5] project samples in the free        which encourages SDF to maintain unit-length gradients in
+space to a zero-level set and compute the distance metric            the whole space to produce a valid SDF.
+with the input point cloud as the loss. Note that we do not                                X
+classify Neural-Pull [5] as an unsigned method, since the                         LE =          (∥∇fθ (q) − 1∥)2 .           (5)
+                                                                                            q∈R3 \P
+surface cannot be represented as a zero-level set, which does
+not satisfy the basic property of SDF. Our work falls into this      Discussion. Although methods using the existing unsigned
+neural optimization category and extends previous methods            supervision demonstrate promising reconstructions from raw
+with a novel semi-signed supervision, a novel loss-based             point clouds, we notice that their success is highly dependent
+region sampling strategy and progressive PE, so that more            on whether the sphere initialization [17] is a good “coarse
+complex shapes could be better reconstructed.                        shape” of the target point clouds. For example, the initial
+                                                                     sphere is not a good approximation of the target point clouds
+3. Method                                                            when there exists a huge volume difference between them
+                                                                     (even if the point cloud is enclosed in the sphere). In this case,
+    Given an unoriented point cloud P, our objective is to           most existing methods, e.g., IGR [17], SAL [2], SALD [3]
+optimize a network fθ (parameterized by θ) to reconstruct            and DiGS [6], tend to fail for these shapes as shown in
+the underlying surface represented with a signed distance            Fig. 1(a) and Fig. 5. More failed cases for current methods
+field (SDF). Then, we can obtain the explicit surface Sθ by          are provided in the Supp. This observation motivates us to
+extracting the zero-level set from fθ :                              determine a rough outside region and apply more informative
+                 Sθ = {p ∈ R3 |fθ (p) = 0}.                 (1)      signed supervision on it, so that the network can better avoid
+To obtain an accurate surface, appropriate supervisions are          bad local minimums.
+required to guide the optimization for the network fθ . Specif-
+                                                                     3.2. Semi-signed optimization module
+ically, the designed supervisions are applied either on the
+on-surface samples (denoted as p ∈ P) or on the off-surface             To alleviate the difficulty in finding a coarse shape, we
+samples (denoted as q ∈ R3 − P) during the optimization              propose a simple yet effective solution that utilizes more
+process. The on-surface losses are used to encourage faith-          informative signed supervision in regions apparently outside
+ful reconstruction on the sampled surface points, while the          of the object. More concretely, the underlying surface of
+off-surface losses are used as regularization to suppress the        a point cloud is bounded, and the sign of regions outside
+
+
+
+                                                                   3771
+                              Semi-Signed module                           Loss-based region sampling
+
+                             𝑉                                                                                    Signed
+                                                                                                                supervision
+
+
+
+
+                         Partitioning
+                           Space
+
+
+
+
+                                                                                                                      MLP
+                                                                                                             PE
+         Input              𝑉                                                                                    Unsigned      Reconstructed
+      point clouds                                                                                              supervision       surface
+
+
+                                 Sampling       Tracking       Outside point         Off-surface point      On-surface point
+
+
+Figure 2. Overview of our SSP method. First, we partition the object space into “outside” (sign-known) regions Vknown and “uncertain”
+(sign-uncertain) regions Vuncertain , such that we can safely impose signed supervision on the outside regions. This simple signed supervision
+can effectively avoid reconstructing undesired ghost surfaces, complementing the existing unsigned supervisions (Sec. 3.2). Second, to
+reconstruct fine structures better, we propose a loss-based region sampling strategy (Sec. 3.3) to adaptively increase the sampling frequency
+in complicated regions with larger losses and utilize progressive positional encoding (Sec. 3.4) for fitting high-frequency signal.
+
+SAL                                                   SAL+SS                   (i.e., approaching the neighboring of object boundary). The
+                                                                               set of empty voxels forms Vknown after the recursive search.
+                                                                               The pseudo code for this procedure is provided in Supp.
+                …
+                                                                               Signed supervision in sign-known regions. We enforce
+   2000 iter.        8000 iter.         10000 iter.        2000 iter.
+                                                                               the signs predicted by fθ (q), q ∈ Vknown to be positive.
+                                                                               Mathematically, we propose the following loss function:
+Figure 3. Visual comparison of the intermediate results optimized
+                                                                                                       X
+                                                                                           Lsigned =           τ (ϵ − fθ (q))+ ,       (6)
+by SAL [2] and “SAL + SS”, where SS means signed supervision.
+                                                                                                           q∈Vknown
+this bounding hull should be positive. We propose the semi-                    where ϵ = N1    is a positive margin distance and τ (x)+ :=
+signed optimization module, that automatically finds outside                   max(x, 0). According to Eq. (6), this loss only imposes
+regions and applies more informative signed supervision.                       the penalization when the predicted SDF value in Vknown
+                                                                               is smaller than ϵ. Although we do not use the exact signed
+                                                                               distance as supervision, we observe that this signed super-
+Space partitioning. To apply signed supervision, we first                      vision can help the network quickly learn a coarse shape
+need to find the apparently “outside” region Vknown . The                      of the target point cloud, compared with existing unsigned
+complement region of Vknown is the sign-uncertain region,                      methods; see an example in Fig. 3.
+in which the signs of its points are not known beforehand.
+Note that this partition does not need to be precise to help the
+network quickly find a coarse shape during the optimization.                   Unsigned supervision in sign-uncertain region. For the
+                                                                               Vuncertain region, only unsigned supervisions [2,3,17] can be
+   More concretely, the input point cloud is first normal-
+                                                                               used. Specifically, we adopt both distance loss Lon
+                                                                                                                                 dist (Eq. (2))
+ized to a cube ranged [−0.9, +0.9]3 , following the com-
+                                                                               and derivative loss Lon grad (Eq. (3)) for  on-surface   points,
+mon practice in [2, 3, 17]. Then, we voxelize the space
+[−1.0, +1.0]3 into an N 3 grid, where N is the resolution                      Lfree
+                                                                                 dist (Eq. (4)) , and Eikonal regularization L E (Eq.  (5)) for
+calculated based on the density of input point clouds (see                     off-surface points. To add more constraints on the Vuncertain
+Supp. for the details). For the boundary voxels, it is easy                    region, we introduce an extra first-order guidance (i.e., un-
+to determine whether they belong to the outside region by                      signed derivative loss) for q as follows:
+                                                                                               X
+simply testing if it contains any point in the given cloud                     Lfree
+                                                                                 grad =                 min{||∇fθ (q)−np ||, ||∇fθ (q)+np ||},
+points. Starting from the outside boundary voxels, we recur-                             q∈Vuncertain \P
+sively use a breadth-first search (BFS) to find outside voxels                                                                          (7)
+connected to them. The search stops if a voxel or any of its                   where p ∈ P is the nearest point to q. Here, we utilize the
+neighboring voxels contains a point in the given point cloud                   unoriented normal of p to approximate the derivative on its
+
+
+
+                                                                           3772
+                                                                         based on the previous region losses, and (ii) sample points
+                                                                         within each voxel. In the first step, we sample a set of voxels,
+                                                                         where each voxel V i is assigned with a sampling probability
+                                                                         pitype proportional to its tracked moving average loss:
+                                                                                                          Mtype−i
+  Loss                                                                                    ptype−i = P                ,              (10)
+                                                                                                           j Mtype−j
+
+                                                                         where Mtype−j ∈ {Mj−on                   j−on     j−off    j−off
+                                                                                                       dist , Mgrad , Mdist , Mgrad ,
+                                                                         Mjsigned }. Then, we apply different procedures to obtain the
+                                                                         final point samples according to the loss type as follows.
+  Surface                                                                   For off-surface losses {Loff        off
+                                                                                                        dist , Lgrad } and the signed loss
+            3000 epoch       5000 epoch          7000 epoch              Lsigned , we use a uniform random sampling strategy to sam-
+Figure 4. Visualizing the tracked moving average loss (Mj−on
+                                                                         ple the points within the voxel. For the on-surface losses
+                                                           grad ) in
+every voxel (top) and reconstructed surface (bottom) at different        {Lon       on
+                                                                            dist , Lgrad }, we query the k-nearest neighbor (k-NN) in-
+iterations. Deeper red colors indicate voxels of higher losses.          put points to the voxel center. Note that a small Gaussian
+                                                                         noise is added to the center location before k-NN, so that
+neighboring point q as a regularization. Please refer to Supp.           different points can be sampled in different iterations. Fig. 4
+for our motivation and more discussion.                                  shows a visualization of the sampling probabilities of the
+                                                                         voxels. Particularly, our strategy tends to sample regions
+                                                                         with complicated structures and fine details. The ablation
+Overall optimization objective. The overall loss is the
+                                                                         study in Sec. 4.4 also shows that our proposed sampling
+weighted sum of the aforementioned loss terms:
+                                                                         strategy helps the network better fit the complicated regions.
+               L =w1 Lon         free       on
+                      dist + w2 Ldist + w3 Lgrad +                       More details are provided in Supp.
+                                                                (8)
+                   w4 Lfree
+                       grad + w5 LE + w6 Lsigned ,
+where {wi } are weights of each loss term.                               3.4. Progressive Positional Encoding
+                                                                            Inspired by the recent works [19,34,36,43], we also adopt
+3.3. Loss-based per-region sampling
+                                                                         a kind of progressive positional encoding (PE) to gradually
+   We propose to sample more points for optimization, if a               introduce high-frequency components. Compared to regu-
+region has a large tracked loss. This strategy can be seen               lar positional encoding, the progressive strategy can better
+as a new variant of importance sampling and can bring two                enhance the optimization quality by avoiding overfitting the
+main benefits: (i) facilitates the reconstruction of fine details        noise in the early stage, especially when processing com-
+in complicated regions, as regions with more details are nor-            plicated structures and details. Specifically, the progressive
+mally harder to fit; and (ii) helps avoid creating degenerated           positional encoding can be represented by
+surfaces in free space when applied together with the signed                γ(p) = M0 sin 20 πp , M0 cos 20 πp , . . .
+                                                                                                                     
+supervision. Note that our sampling strategy is also used
+                                                                                    ML−1 sin 2L−1 πp , ML−1 cos 2L−1 πp ,
+                                                                                                                                
+in the outside region. In practice, it has two main steps:
+region-wise loss tracking and adaptive sampling.                                                                                   (11)
+                                                                         where p is a point coordinate, L is the frequency band, and
+Region-wise loss tracking. We consider all five major loss               M = {M0 , · · · , ML−1 } is a mask vector. We use the fol-
+terms: Lon       free    on      free                     on
+         dist , Ldist , Lgrad , Lgrad , Lsigned . Taking Ldist as
+                                                                         lowing progressive rule for Mi at iteration n:
+an example, we track the running mean loss of all applicable                                   
+                                                                                                  0, if i > L0 + K   n
+voxels V i (occupied voxels for Lon                                                     Mi =                                       (12)
+                                      dist ) as follows:                                          1, otherwise ,
+         Mi−on              i−on        i−on
+          dist = (1 − α) × Mdist + α × Ldist ,                  (9)      where i ∈ {0, 1, ..., L − 1}, K is a parameter controlling the
+where Li−on
+        dist is the loss of voxel i in the current iteration,
+                                                                         increasing speed, and L0 is the initial frequency band. We
+Mi−on
+  dist is the tracked running mean loss, and α is the mo-                empirically set L0 = 3, L = 6, and K = 1000.
+mentum empirically set to 0.1. Similarly, we can track
+the other losses denoted as Mi−on        i−free    i−free
+                                grad , Mdist , Mgrad , and               4. Results
+Misigned . Note that different losses are applied to different
+regions (voxels). Please refer to Supp. for more details.                   We conducted extensive experiments on the ABC subset
+                                                                         (100 objects) [15], and three types of challenging data that
+Adaptive sampling. Next, we perform a two-step sam-                      contain objects with fine details [44] (5 objects), varying sam-
+pling for each loss: (i) adaptively sample a set of voxels               pling density (32 objects) [18], and noises (57 objects) [18].
+
+
+
+                                                                       3773
+    Methods       F-score↑    CD-L1 ↓ (×100)      NC↑
+    SPSR [25]      0.557          2.774           0.904
+    SAP [37]       0.660          1.368           0.915
+    IMLS [29]      0.626          1.245           0.923
+    POCO [9]       0.670          1.148           0.943
+    N-P [5]        0.370            2.071         0.912
+    SAL [2]        0.407            4.676         0.870
+    SALD [3]       0.560            1.719         0.919
+    IGR [17]       0.551            4.429         0.891
+    DiGS [6]       0.657            1.540         0.936
+    Ours           0.675            1.225         0.938
+                                                                        IGR       SAL      SALD      DiGS      Ours       GT
+Table 1. Quantitative comparisons on the ABC subset [15]. We
+bold the best and underline the second best results.                   Figure 5. Visual comparisons on the ABC subset [15].
+    Methods       F-score↑    CD-L1 ↓ (×100)      NC↑             Implementation details. We use the same neural architec-
+    SPSR [25]      0.787          2.230           0.896           ture and the same number of sampling points as IGR [17].
+    SAP [37]       0.940          0.540           0.947           Following [2, 3, 5, 17], we overfit the network for every input
+    IMLS [29]      0.793          0.759           0.882           point cloud and set the full iteration as 10,000 for the whole
+    POCO [9]       0.902          0.610           0.939
+                                                                  experiments. We adopt the Marching cubes [30] algorithm
+    N-P [5]        0.627          0.934           0.927
+                                                                  to extract the mesh from its implicit field, and the default
+    SAL [2]        0.884          0.779           0.925
+    SALD [3]       0.730          1.187           0.891           resolution is 2563 for all the neural implicit methods. All
+    IGR [17]       0.308          6.471           0.631           the experiments are conducted on the GeForce RTX 2080 Ti
+    DiGS [6]       0.942          0.529           0.954           GPU. Details and architectures can be found in Supp.
+    Ours           0.943          0.520           0.960
+                                                                  4.2. Result on ABC dataset
+Table 2. Quantitative comparisons on complex shapes in
+Thingi10K [44].                                                       To evaluate the stability of our method, we compare our
+                                                                  method in a subset of ABC [26] (noise-free version) released
+4.1. Experiment setting                                           by Points2surf [15]. This subset contains 100 3D CAD
+Evaluation metrics. We report the L1-based Chamfer Dis-           models with various topologies and we use the provided
+tance (denoted as CD-L1 ), Normal Consistency (NC), and           sampled point clouds as input. Quantitative results of differ-
+F1-score with default threshold 1% following SAP [37] (F-         ent methods are shown in Tab. 1. Compared with existing
+score) between reconstructed surface and GT. Note that dif-       fitting-based methods, our method achieves the best results
+ferent papers (e.g., NP [5], DiGS [6] and SAP [37]) use           on all the metrics (i.e., F-score, CD-L1 , NC) and achieves
+different evaluation protocols. For fairer comparisons, we        comparable performance with SOTA learning-based method
+use the same procedure as SAP [37] to calculate the metrics       POCO [9] trained on ABC dataset. As shown in Fig. 5, our
+(details provided in Supp.).                                      method could significantly alleviate the ghost surface prob-
+                                                                  lem and reconstruct more accurate surfaces. In contrast, most
+                                                                  other fitting-based methods (IGR [17], SAL [2], SALD [3]
+Baselines. We compare with three types of methods: (i)            and DiGS [6]) occasionally create ghost surfaces in unde-
+non-neural implicit methods including Screened Poisson Sur-       sired locations, thereby severely worsening the CD-L1 value.
+face Reconstruction (SPSR) [25] and SAP [37]; (ii) fitting-       More visual comparisons can be found in Supp.
+based neural implicit methods, including IGR [17], SAL [2],
+                                                                  4.3. Result on challenging data
+SALD [3], Neural-Pull [5], and DiSG [6]; and (iii) learning-
+based neural implicit methods, POCO [9] and IMLSNet [29].         Data with high-level details We further conduct experi-
+The results of POCO and IMLSNet (denoted as IMLS)                 ments on Thingi10k [44]. Similar to prior work [37], we
+are calculated based on their officially-released pre-trained     use the same five challenging shapes with complex topology
+model. For the other baselines (IGR, SAL, Neural-Pull (de-        and high-level fine details. For SAP [37] and SPSR [24]
+noted as N-P) and SAP), we report the results optimized           results in Tab. 2, we use the numbers reported in SAP [37].
+by their officially-released code. The normal inputs of our       As shown in Tab. 2, we achieve the best performance on all
+method, SALD, and SPSR are estimated from the state-of-           metrics on Thingi10k [44]. As shown in Fig. 6, our method
+the-art method AdaFit [46]. Since SPSR requires consis-           could preserve more details compared with existing methods
+tently oriented normals, we use minimum spanning tree [45]        while having fewer artifacts. Although DiGS [6] uses the
+to propagate the normal orientations [20].                        SIRENs [41] neural structure for high-frequency representa-
+
+
+
+                                                                3774
+                                                                             Varying
+                                                                                         Input         SAP          IMLS          SAL
+                                                                             density
+
+
+
+
+    DiGS              SAP               Ours              GT                             SALD          DiGS          Ours         GT
+
+           Figure 6. Visual comparisons on Thingi10K [44].
+
+                    Density-variation                  Noise
+ Methods  F-score↑ CD-L1 ↓ NC↑ F-score↑ CD-L1 ↓ NC↑                              Noise   Input         SAP          IMLS          SAL
+
+                   (×100)               (×100)
+ SPSR [25] 0.789    2.007 0.938 0.723    2.216 0.833
+ SAP [37]  0.889    0.658 0.932 0.580    1.128 0.693
+                                                                                         SALD          DiGS          Ours         GT
+ IMLS [29] 0.830            0.715    0.925 0.583        1.205    0.879
+ POCO [9] 0.867             0.845    0.943 0.510        1.721    0.911       Figure 7. Visual comparisons on varying-density data from [18].
+
+ N-P [5]         0.397      1.359    0.945     0.257    2.027    0.901      since the test shapes’ sampling density is not similar to their
+ SAL [2]         0.767      1.823    0.937     0.328    8.467    0.880      training-set shapes. More results can be found in Supp.
+ SALD [3]        0.724      1.209    0.926     0.255    3.472    0.919
+ IGR [17]        0.714      7.316    0.918     0.697    3.480    0.889
+ DiGS [6]        0.877      0.868    0.951     0.544    1.273    0.717      Noisy data To test the robustness of our method to noise,
+ Ours            0.917      0.567    0.962     0.685    0.994    0.957      we conduct experiments on the noisy test data from PCP-
+                                                                            Net [18]. This dataset includes 57 point cloud shapes of
+Table 3. Quantitative comparisons on the data with different levels
+                                                                            different levels of Gaussian noise. Our method significantly
+of noise and different density variation on PCPNet [18].
+                                                                            outperforms others on the CD-L1 and NC metrics; see Tab. 3.
+DS SS LRS PE             F-score↑    CD-L1 ↓ (×100)            NC↑          The visual comparisons in Fig. 7 also show that our method
+                                                                            reconstructs more accurate and smooth surfaces for the noisy
+✓ ✓ ✓           ✓         0.943              0.520             0.960
+                                                                            point clouds. More results can be found in Supp.
+✗   ✓   ✓       ✓   0.940 (-0.004)    0.524 (+0.004)     0.959 (-0.001)
+✓   ✗   ✓       ✓   0.881 (-0.062)    0.626 (+0.106)     0.952 (-0.008)     4.4. Ablation study
+✓   ✓   ✗       ✓   0.883 (-0.060)    0.831 (+0.311)     0.947 (-0.013)
+✓   ✓   ✓       ✗   0.877 (-0.066)    0.808 (+0.288)     0.912 (-0.048)     Signed-supervision & derivative supervision. We con-
+                                                                            duct experiments to show the effectiveness of signed-
+Table 4. Ablation study conducted on the Thingi10K [44] dataset.
+                                                                            supervision (SS) and derivative supervision (DS) in Tab. 4
+SS, DS, LRS, PE represent “Signed supervision”, “Derivative su-
+                                                                            (1st & 2nd rows). For the ablation on SS, we compare the
+pervision”, “Loss-based per-region sampling”, and “Positional en-
+coding”, respectively.                                                      result optimized by our proposed SS with the result by the
+                                                                            existing unsigned supervision on the full space. As expected,
+tion, it still has difficulty in fitting the fine structures, since         removing either SS or DS leads to inaccurate fitting results.
+the points in these regions have not been adaptively sampled
+as many times as ours due to its uniform sampling strategy.                 Loss-based per-region sampling & positional encoding.
+See the abdomen of the “dinosaur” shown in Fig. 6. Though                   We conduct ablation on loss-based per-region sampling
+SAP [37] could successfully reconstruct an accurate surface,                (LRS) and positional encoding (PE). For LRS, we compare
+it occasionally creates artifacts for the complicated region.               the result optimized by our LRS with the result optimized
+                                                                            by the traditional Gaussian sampling (GS) strategy, which is
+Varying-density data To evaluate the robustness of our                      widely used in the existing methods [2, 3, 5, 17]. As shown
+method to varying sampling density, we conduct experiments                  in Tab. 4 (3rd), removing LRS in our method results in sig-
+on the varying-density dataset released by PCPNet [18]. As                  nificant performance drop. Since the sampled points by GS
+shown in Tab. 3, our method performs the best on all three                  are mostly near to the surface, this may lead to inefficient
+metrics. As shown Fig. 7, our method produces more com-                     sampling in the outside region for adding signed supervision.
+plete surfaces compared with the baseline methods. Note                     Besides, removing PE decreases the overall performance as
+that POCO [9] has difficulty in obtaining the accurate surface              shown in Tab. 4 (4th).
+
+
+
+                                                                          3775
+ Method      Signed Super. F-score↑ CD-L1 ↓ (×100)        NC↑          Method             Ours        DiGS       IGR      SAL     SALD   NP
+ IGR [17]                      0.308        6.471        0.631                                         [6]       [17]      [2]     [3]   [5]
+ IGR [17]          ✓           0.636        1.676        0.729         Opti.         Prep.     10K     10K       20K      20K     20K    40K
+                                                                       Time           ∼1       ∼15     ∼15       ∼27      ∼20     ∼22    ∼15
+Table 5. Quantitative comparisons of results optimized by IGR and
+IGR equipped with our signed supervision on Thingi10k [44].           Table 8. The optimization epochs & approximate time (in minutes)
+                                                                      for optimization-based neural methods. "Opti." means "Optimiza-
+ Method      Signed Super. F-score↑ CD-L1 ↓ (×100)        NC↑         tion" and "Prep." means "Preprocessing".
+ DiGS [6]                      0.411        4.018        0.881                     F-score↑          CD-L1 ↓ (×100)                NC↑
+ DiGS [6]          ✓           0.500        2.218        0.920
+                                                                       σ     0.5      1       1.5    0.5     1      1.5     0.5     1    1.5
+Table 6. Quantitative comparison of results optimized by DiGS and
+DiGS equipped with our signed supervision on the ABC [26] hard              0.939 0.943 0.941 0.532 0.520 0.538 0.959 0.960 0.960
+case subset.                                                               Table 9. Thingi10K results using 3 voxel sizes (scaled by σ).
+ Method Norm. Info.            F-score↑ CD-L1 ↓ (×100) NC↑            normals for the optimization. However, optimization from
+   IGR      Oriented (GT)       0.917       0.785         0.94        unsigned supervision occasionally suffers from the difficulty
+                                                                      in finding coarse shapes, leading to large fitting errors for
+   IGR      None                0.308       6.471         0.631
+                                                                      complex shapes, as shown in Tab. 7. In contrast, our SSP
+   IGR      Oriented (Calc.)    0.748       2.889         0.933
+                                                                      achieves a significant improvement with solely unoriented
+  IGR       Unoriented          0.584       4.353         0.858       normal information.
+  Ours      Unoriented          0.943       0.520         0.960
+Table 7. Quantitative comparison of results optimized from orien-
+                                                                      Optimization timing comparison. We list the optimiza-
+tated and unoriented point clouds. "Calc." means "calculated".        tion epochs and average time for the optimization-based
+                                                                      methods in Tab. 8, our method takes the similar time with
+4.5. Further analysis                                                 DiGS [6] and converges faster than other optimization-based
+Is the proposed signed supervision applicable to other                baselines (e.g., IGR [17], SAL [2], etc.).
+SOTA methods? To answer this question, we verify the
+effectiveness of our signed supervision on two baselines,             Influence of voxel size. We conduct experiments using
+IGR [17] and DiGS [14]. For IGR, we conduct experiments               different voxel sizes to study the influence of different voxel
+on Thingi10k [44], since we observe that IGR had difficulty           sizes in Tab. 9. The results are stable within a reasonable
+in fitting coarse shapes for several objects in Thingi10k. For        range around the voxel size determined by our automatic
+DiGS, we choose the top 10 hard cases in the ABC sub-                 algorithm (details in Supp).
+set [15] based on the CD-L1 values obtained experimentally.
+We compare the results optimized with an extra term, i.e., our        5. Conclusion and Limitation
+signed supervision, to the results from the original baselines
+(IGR and DiGS). As shown in Tab. 5 and Tab. 6, our signed                We present a novel semi-signed prioritized fitting-based
+supervision can significantly improve the performance of              method (SSP) for neural surface reconstruction from unori-
+both baseline methods (especially on the CD-L1 metric).               ented point clouds. First, we propose to utilize the extra
+                                                                      coarse signed supervision to help the neural network quickly
+Difficulty of optimization from unoriented point clouds.              learn coarse shapes for target (complicated) objects. To ob-
+We conduct experiments to explore the difficulty of opti-             tain more details, we propose a loss-based region importance
+mization from unoriented point clouds in Tab. 7. IGR [17]             sampling strategy and progressive PE to prioritize the opti-
+reconstructs relatively accurate shapes, if GT oriented nor-          mization. SSP method has achieved improved performance
+mals are given (1st row in Tab. 7). However, the accurate             on multiple datasets. One limitation of our method is that it
+oriented normals are usually difficult to obtain. When there          can not handle the open surfaces or the scene-level input data
+is no normal supervision, the performance decreases signifi-          with large missing parts and we leave this as future work.
+cantly (2nd row in Tab. 7). One solution to this problem is
+that we can adopt traditional methods (e.g., the minimum              6. Acknowledgement
+spanning tree [45]) to estimate the normals’ orientations.
+However, the normal orientation task is notoriously difficult            This work was supported by the InnoHK of the Gov-
+in regions with complicated structures, and the inaccurate            ernment of the Hong Kong Special Administrative Region
+normal orientations limit the subsequent reconstruction qual-         via the Hong Kong Centre for Logistics Robotics and RGC
+ity (3rd row in Tab. 7). Another possibility is that we only          TRS project (T45-401/22-N). We thank Yuan Liu for his
+use the unsigned derivative supervision based on unoriented           constructive comments.
+
+
+
+                                                                    3776
+References                                                             [16] Kyle Genova, Forrester Cole, Avneesh Sud, Aaron Sarna, and
+                                                                            Thomas Funkhouser. Local deep implicit functions for 3D
+ [1] Matan Atzmon, Niv Haim, Lior Yariv, Ofer Israelov, Haggai              shape. In CVPR, 2020. 3
+     Maron, and Yaron Lipman. Controlling neural level sets. In        [17] Amos Gropp, Lior Yariv, Niv Haim, Matan Atzmon, and
+     NeurIPS, 2019. 2, 3                                                    Yaron Lipman. Implicit geometric regularization for learning
+ [2] Matan Atzmon and Yaron Lipman. SAL: Sign agnostic learn-               shapes. 2020. 2, 3, 4, 6, 7, 8
+     ing of shapes from raw data. In Proceedings of the IEEE/CVF       [18] Paul Guerrero, Yanir Kleiman, Maks Ovsjanikov, and Niloy J.
+     Conference on Computer Vision and Pattern Recognition,                 Mitra. PCPNet: Learning local shape properties from raw
+     pages 2565–2574, 2020. 1, 2, 3, 4, 6, 7, 8                             point clouds. In Comput. Graph. Forum. Wiley Online Li-
+ [3] Matan Atzmon and Yaron Lipman. Sald: Sign agnostic learn-              brary, 2018. 2, 5, 7
+     ing with derivatives. In International Conference on Learning     [19] Amir Hertz, Or Perel, Raja Giryes, Olga Sorkine-Hornung,
+     Representations, 2020. 2, 3, 4, 6, 7, 8                                and Daniel Cohen-Or. SAPE: Spatially-adaptive progressive
+ [4] Abhishek Badki, Orazio Gallo, Jan Kautz, and Pradeep Sen.              encoding for neural optimization. In NeurIPS, 2021. 5
+     Meshlet priors for 3D mesh reconstruction. In CVPR, 2020.         [20] Hugues Hoppe, Tony DeRose, Tom Duchamp, John McDon-
+     3                                                                      ald, and Werner Stuetzle. Surface reconstruction from unor-
+ [5] Ma Baorui, Han Zhizhong, Liu Yu-shen, and Zwicker                      ganized points. In Proceedings of the 19th annual conference
+     Matthias. Neural-Pull: Learning signed distance functions              on Computer graphics and interactive techniques, 1992. 6
+     from point clouds by learning to pull space onto surfaces.        [21] Fei Hou, Chiyu Wang, Wencheng Wang, Hong Qin, Chen
+     2021. 2, 3, 6, 7, 8                                                    Qian, and Ying He. Iterative poisson surface reconstruction
+ [6] Yizhak Ben-Shabat, Chamin Hewa Koneputugodage, and                     (ipsr) for unoriented points. arXiv preprint arXiv:2209.09510,
+     Stephen Gould. DiGS: Divergence guided shape implicit                  2022. 2
+     neural representation for unoriented point clouds. In CVPR,       [22] Chiyu Jiang, Avneesh Sud, Ameesh Makadia, Jingwei Huang,
+     2022. 2, 3, 6, 7, 8                                                    Matthias Nießner, Thomas Funkhouser, et al. Local implicit
+ [7] Matthew Berger, Andrea Tagliasacchi, Lee M. Seversky,                  grid representations for 3D scenes. In CVPR, 2020. 3
+     Pierre Alliez, Gael Guennebaud, Joshua A Levine, Andrei           [23] Michael Kazhdan. Reconstruction of solid models from ori-
+     Sharf, and Claudio T. Silva. A survey of surface reconstruc-           ented point sets. 2005. 2, 3
+     tion from point clouds. In Comput. Graph. Forum, 2017.            [24] Michael Kazhdan, Matthew Bolitho, and Hugues Hoppe. Pois-
+     2                                                                      son surface reconstruction. 2006. 2, 6
+ [8] Fausto Bernardini, Joshua Mittleman, Holly Rushmeier, Cláu-       [25] Michael Kazhdan and Hugues Hoppe. Screened poisson
+     dio Silva, and Gabriel Taubin. The ball-pivoting algorithm             surface reconstruction. 2013. 1, 2, 6, 7
+     for surface reconstruction. IEEE TVCG, 1999. 2                    [26] Sebastian Koch, Albert Matveev, Zhongshi Jiang, Francis
+ [9] Alexandre Boulch and Renaud Marlet. Poco: Point con-                   Williams, Alexey Artemov, Evgeny Burnaev, Marc Alexa,
+     volution for surface reconstruction. In Proceedings of the             Denis Zorin, and Daniele Panozzo. ABC: A big CAD model
+     IEEE/CVF Conference on Computer Vision and Pattern                     dataset for geometric deep learning. In CVPR, 2019. 6, 8
+     Recognition, pages 6302–6314, 2022. 6, 7                          [27] Guo Li, Ligang Liu, Hanlin Zheng, and Niloy J. Mitra. Anal-
+[10] Jonathan C. Carr, Richard K. Beatson, Jon B. Cherrie, Tim J.           ysis, reconstruction and manipulation using arterial snakes.
+     Mitchell, W. Richard Fright, Bruce C. McCallum, and Tim R.             2010. 2
+     Evans. Reconstruction and representation of 3D objects with       [28] Yiyi Liao, Simon Donne, and Andreas Geiger. Deep marching
+     radial basis functions. In Proceedings of the 28th annual              cubes: Learning explicit surface representations. In CVPR,
+     conference on Computer graphics and interactive techniques,            2018. 3
+     2001. 1, 2                                                        [29] Shi-Lin Liu, Hao-Xiang Guo, Hao Pan, Peng-Shuai Wang,
+[11] Angel X. Chang, Thomas A. Funkhouser, Leonidas J. Guibas,              Xin Tong, and Yang Liu. Deep implicit moving least-squares
+     Pat Hanrahan, QiXing Huang, Zimo Li, Silvio Savarese,                  functions for 3D reconstruction. In CVPR, 2021. 3, 6, 7
+     Manolis Savva, Shuran Song, Hao Su, Jianxiong Xiao, Li            [30] William E. Lorensen and Harvey E. Cline. Marching cubes:
+     Yi, and Fisher Yu. ShapeNet: An information-rich 3D model              A high resolution 3D surface construction algorithm. ACM
+     repository. arXiv preprint arXiv:1512.03012, 2015. 3                   SIGGRAPH Computer Graphics, 1987. 6
+[12] Zhiqin Chen and Hao Zhang. Learning implicit fields for           [31] Josiah Manson, Guergana Petrova, and Scott Schaefer.
+     generative shape modeling. In CVPR, 2019. 3                            Streaming surface reconstruction using wavelets. In Comput.
+[13] Michael G. Crandall and Pierre-Louis Lions. Viscosity so-              Graph. Forum, 2008. 2, 3
+     lutions of Hamilton-Jacobi equations. Transactions of the         [32] Lars Mescheder, Michael Oechsle, Michael Niemeyer, Se-
+     American mathematical society, 1983. 3                                 bastian Nowozin, and Andreas Geiger. Occupancy networks:
+[14] Angela Dai, Christian Diller, and Matthias Nießner. SG-NN:             Learning 3D reconstruction in function space. In CVPR, 2019.
+     Sparse generative neural networks for self-supervised scene            3
+     completion of RGB-D scans. In CVPR, 2020. 1, 2, 3, 8              [33] Zhenxing Mi, Yiming Luo, and Wenbing Tao. Ssrnet: Scal-
+[15] Philipp Erler, Paul Guerrero, Stefan Ohrhallinger, Niloy J.            able 3D surface reconstruction network. In CVPR, 2020. 3
+     Mitra, and Michael Wimmer. Points2Surf: Learning implicit         [34] Ben Mildenhall, Pratul P. Srinivasan, Matthew Tancik,
+     surfaces from point clouds. In ECCV, 2020. 2, 3, 5, 6, 8               Jonathan T. Barron, Ravi Ramamoorthi, and Ren Ng. NeRF:
+
+
+
+
+                                                                     3777
+     Representing scenes as neural radiance fields for view synthe-
+     sis. ECCV, 2020. 5
+[35] Jeong Joon Park, Peter Florence, Julian Straub, Richard New-
+     combe, and Steven Lovegrove. DeepSDF: Learning contin-
+     uous signed distance functions for shape representation. In
+     CVPR, 2019. 3
+[36] Keunhong Park, Utkarsh Sinha, Jonathan T. Barron, Sofien
+     Bouaziz, Dan B. Goldman, Steven M. Seitz, and Ricardo
+     Martin-Brualla. Nerfies: Deformable neural radiance fields.
+     In ICCV, 2021. 5
+[37] Songyou Peng, Chiyu Jiang, Yiyi Liao, Michael Niemeyer,
+     Marc Pollefeys, and Andreas Geiger. Shape as points: A
+     differentiable poisson solver. In NeurIPS, 2021. 2, 6, 7
+[38] Carlos Eduardo Scheidegger, Shachar Fleishman, and Cláu-
+     dio T. Silva. Triangulating point set surfaces with bounded
+     error. 2005. 2
+[39] Andrei Sharf, Thomas Lewiner, Ariel Shamir, Leif Kobbelt,
+     and Daniel Cohen-Or. Competing fronts for coarse–to–fine
+     surface reconstruction. In Comput. Graph. Forum, 2006. 2
+[40] Chen Shen, James F. O’Brien, and Jonathan R. Shewchuk. In-
+     terpolating and approximating implicit surfaces from polygon
+     soup. In ACM SIGGRAPH 2004 Papers. 2004. 1, 2, 3
+[41] Vincent Sitzmann, Julien Martel, Alexander Bergman, David
+     Lindell, and Gordon Wetzstein. Implicit neural representa-
+     tions with periodic activation functions. Advances in Neural
+     Information Processing Systems, 33:7462–7473, 2020. 6
+[42] Matthew Tancik, Pratul Srinivasan, Ben Mildenhall, Sara
+     Fridovich-Keil, Nithin Raghavan, Utkarsh Singhal, Ravi Ra-
+     mamoorthi, Jonathan Barron, and Ren Ng. Fourier features
+     let networks learn high frequency functions in low dimen-
+     sional domains. Advances in Neural Information Processing
+     Systems, 33:7537–7547, 2020. 2
+[43] Yiqun Wang, Ivan Skorokhodov, and Peter Wonka. Improved
+     surface reconstruction using high-frequency details. arXiv
+     preprint arXiv:2206.07850, 2022. 5
+[44] Qingnan Zhou and Alec Jacobson. Thingi10k: A dataset of
+     10,000 3D-printing models. arXiv preprint arXiv:1605.04797,
+     2016. 2, 3, 5, 6, 7, 8
+[45] Qian-Yi Zhou, Jaesik Park, and Vladlen Koltun. Open3D:
+     A modern library for 3D data processing. arXiv preprint
+     arXiv:1801.09847, 2018. 6, 8
+[46] Runsong Zhu, Yuan Liu, Zhen Dong, Yuan Wang, Tengping
+     Jiang, Wenping Wang, and Bisheng Yang. AdaFit: Rethinking
+     learning-based normal estimation on point clouds. In ICCV,
+     2021. 6
+
+
+
+
+                                                                      3778
+

@@ -1,0 +1,647 @@
+                         This ICCV paper is the Open Access version, provided by the Computer Vision Foundation.
+                                       Except for this watermark, it is identical to the accepted version;
+                                 the final published version of the proceedings is available on IEEE Xplore.
+
+
+
+
+ Delicate Textured Mesh Recovery from NeRF via Adaptive Surface Refinement
+
+ Jiaxiang Tang1 , Hang Zhou2 , Xiaokang Chen1 , Tianshu Hu2 , Errui Ding2 , Jingdong Wang2 , Gang Zeng1
+        1
+          Key Lab. of Machine Perception (MoE), School of IST, Peking University. 2 Baidu Inc.
+   {tjx, pkucxk, zeng}@pku.edu.cn                 {zhouhang09,hutianshu01,dingerrui,wangjingdong}@baidu.com
+
+
+
+
+                                                                                  Real-time Rendering       Geometry Editing
+                  Geometry      Diffuse Texture     Specular Texture   MLP
+
+
+
+
+    ……                                                                               Texture Editing       Model Composition
+RGB Images                 Textured Surface Mesh Reconstruction                             Downstream Applications
+
+Figure 1: Our framework, NeRF2Mesh, reconstructs high-quality surface meshes with diffuse and specular textures from
+multi-view RGB images, generalizing well from object- to scene-level datasets. The exported textured meshes are ready-to-
+use for common graphics hardware and software, facilitating various downstream applications.
+
+                        Abstract                                  1. Introduction
+                                                                      The reconstruction of 3D scenes from RGB images is
+   Neural Radiance Fields (NeRF) have constituted a re-           a complex task in computer vision with many real-world
+markable breakthrough in image-based 3D reconstruction.           applications. In recent years, Neural Radiance Fields
+However, their implicit volumetric representations differ         (NeRF) [31, 2, 8, 32] have gained popularity for their im-
+significantly from the widely-adopted polygonal meshes and        pressive ability to reconstruct and render large-scale scenes
+lack support from common 3D software and hardware, mak-           with realistic details. However, NeRF representations often
+ing their rendering and manipulation inefficient. To over-        use implicit functions and specialized ray marching algo-
+come this limitation, we present a novel framework that           rithms for rendering, making them difficult to manipulate
+generates textured surface meshes from images. Our ap-            and slow to render due to poor hardware support, which
+proach begins by efficiently initializing the geometry and        limits their use in downstream applications. In contrast,
+view-dependency decomposed appearance with a NeRF.                polygonal meshes are the most commonly used represen-
+Subsequently, a coarse mesh is extracted, and an itera-           tation in 3D applications and are well-supported by most
+tive surface refinement algorithm is developed to adaptively      graphic hardware to accelerate rendering. However, direct
+adjust both vertex positions and face density based on re-        reconstruction of meshes can be challenging due to their ir-
+projected rendering errors. We jointly refine the appear-         regularity, and most approaches are limited to object-level
+ance with geometry and bake it into texture images for real-      reconstructions [33, 9, 10].
+time rendering. Extensive experiments demonstrate that our            Some recent works [33, 6, 11, 54] have focused on com-
+method achieves superior mesh quality and competitive ren-        bining the advantages of both NeRF and mesh representa-
+dering quality.                                                   tion. MobileNeRF [11] presents a method of optimizing
+                                                                  NeRF on a grid mesh and incorporates rasterization for real-
+
+
+
+                                                               17739
+time rendering. However, the resulting mesh is far from the        2. Related Work
+real surface of the reconstructed scene. Besides, the tex-
+tures are in the feature space instead of the RGB space,           2.1. NeRF for Scene Reconstruction
+which makes editing or manipulation inconvenient. To ob-
+tain accurate surface meshes, a popular approach is to use             NeRF [31] and its subsequent works [2, 3, 59, 38, 50,
+Signed Distance Fields (SDF), which defines an exact sur-          35, 50, 1, 7, 39] represent a remarkable advancement in 3D
+face [48, 53, 57]. However, this line of research typically        scene reconstruction from RGB images. Despite the supe-
+generates over-smoothed geometry that fails to model thin          rior rendering quality, vanilla NeRF faces several issues.
+structures. Additionally, meshes obtained through March-           For instance, the model’s training and inference speed is
+ing Cubes [29] produce a large number of redundant ver-            slow due to the large number of MLP evaluations, which
+tices and faces to keep details. NVdiffrec [33] uses a dif-        limits the widespread adoption of NeRF representation. To
+ferentiable rasterizer [23] to optimize a deformable tetra-        address this, several works [56, 40, 43, 32, 8] have proposed
+hedral grid but is limited to object-level reconstruction and      methods to reduce the MLP’s size or eliminate it altogether,
+also fails to recover complex topology. The presence of a          and instead optimize an explicit 3D feature grid that stores
+representation gap makes it challenging to recover accurate        the density and appearance information. DVGO [43] em-
+surface meshes from volumetric NeRF while maintaining              ploys two dense feature grids for density and appearance
+rendering quality.                                                 encoding, but the dense grid leads to a large model size. To
+    This paper presents a novel framework called                   effectively control the model size, Instant-NGP [32] pro-
+NeRF2Mesh for extracting delicate textured surface                 poses a multi-resolution hash table. In addition to the effi-
+meshes from RGB images, as illustrated in Figure 1. Our            ciency issue, the implicit representation of NeRF cannot be
+key insight is to refine a coarse mesh extracted from              directly manipulated and edited in both geometry and ap-
+NeRF for joint optimization of geometry and appear-                pearance, unlike explicit representations such as polygonal
+ance. The volumetric NeRF representation is suitable for           meshes. Although some works [24, 44, 52, 27, 47] explore
+efficient initialization of geometry and appearance. With a        geometry manipulation and composition of NeRF, they are
+coarse mesh extracted from NeRF, we adjust the vertices’           still limited in different ways. On the other hand, oth-
+position and face density based on 2D rendering errors,            ers [60, 5, 58, 42, 4, 46] aim to decompose the reflectance
+which in turn contributes to appearance optimization. To           under unknown illumination to enable relighting and tex-
+enable texture editing, we decompose the appearance into           ture editing. These problems result in a gap between NeRF
+view-independent diffuse and view-dependent specular               representation and widely used polygonal meshes in down-
+terms, so the diffuse color can be exported as a standard          stream applications. Our objective is to narrow this gap
+RGB image texture. The specular term is exported as a              by exploring methods to convert NeRF reconstructions into
+feature texture that produces view-dependent color through         textured meshes.
+a small MLP embedded in the fragment shader. Overall, our
+framework enables the creation of versatile and practical
+mesh assets that can be used in a range of scenarios that are      2.2. Surface Mesh for Scene Reconstruction
+challenging for volumetric NeRF.
+                                                                      Reconstructing explicit surface meshes directly can be
+    Our contributions can be summarized as follows:
+                                                                   challenging, particularly for complex scenes with intricate
+  • We present the NeRF2Mesh framework to reconstruct              topology. Most approaches in this area of research assume
+    textured surface meshes from multi-view RGB images,            a template mesh with a fixed topology [9, 10, 21, 26]. Re-
+    by jointly refining the geometry and appearance of             cent methods [33, 18, 25, 41] have begun to address topol-
+    coarse meshes extracted from an appearance decom-              ogy optimization. NVdiffrec [33] combines differentiable
+    posed NeRF.                                                    marching tetrahedrons [25] with differentiable rendering to
+                                                                   optimize surface meshes directly. It can also decompose
+  • We propose an iterative mesh refinement algorithm              materials and illumination, which is further improved in
+    that enables us to adaptively adjust face density, where       NVdiffrecMC [18] using Monte Carlo rendering. Nonethe-
+    complex surfaces are subdivided and simpler surfaces           less, these methods still have limitations in that they only
+    are decimated based on re-projected 2D image errors.           apply to object-level mesh reconstruction and struggle to
+                                                                   differentiate between background and foreground meshes in
+  • Our method achieves enhanced surface mesh quality,             unbounded outdoor scenes. A foreground mask [33] must
+    relatively smaller mesh size, and competitive render-          be prepared to optimize the object boundary using differen-
+    ing quality to recent methods. Furthermore, the result-        tiable rendering. In contrast, our focus is on surface mesh
+    ing meshes can be real-time rendered and interactively         reconstruction at both the object and scene levels without
+    edited with common 3D hardware and software.                   the need of semantic masks.
+
+
+
+                                                                17740
+2.3. Extracting Surface Mesh from NeRF                                accessible alternative. We follow recent advancements in
+                                                                      grid-based NeRF [32, 43, 8, 40] to enhance the efficiency
+    NeRF represents geometry using a volumetric density
+                                                                      of NeRF by employing two separate feature grids to repre-
+field, which may not necessarily form a concrete sur-
+                                                                      sent the 3D space.
+face. To address this, a popular strategy is to learn a
+                                                                      Geometry. Geometry learning is facilitated through a den-
+SDF [48, 53, 14, 15, 57, 49, 51], where the surface can
+                                                                      sity grid [32] and a shallow MLP expressed as follows:
+be determined by the zero level set. NeuS [48] applies
+a SDF to density transformation to enable differentiable                                                        \sigma = \phi (\text {MLP}(E^\text {geo}(\mathbf {x}))),                                                                                    (1)
+rendering, and the Marching Cubes [29] algorithm is usu-
+ally used to extract the surface mesh from these volumes.             where ϕ is the exponential activation [32] that promotes
+BakedSDF [54] optimize a hybrid SDF volume-surface rep-               sharper surface, E geo is a learnable multi-resolutional fea-
+resentation and bake it into meshes for real-time rendering.          ture grid, and x ∈ R3 is the position of any 3D point.
+However, SDF-based methods tend to learn over-smoothed                Appearance Decomposition. NeRF typically operates un-
+geometry and fail to handle thin structures. Some meth-               der no assumption of illumination or material properties. As
+ods [45, 28] explore Unsigned Distance Field (UDF) or a               such, previous works have mainly employed a 5D implicit
+combination of density field and SDF to address this limita-          function conditioned on 3D position and 2D view direction
+tion, but they are still limited to object-level reconstruction.      to model view-dependent appearance. This approach ren-
+SAMURAI [6] aims to jointly recover camera poses, ge-                 ders the appearance as a black box, making it challenging
+ometry, and appearance of a single object under unknown               to represent appearance with traditional 2D texture images.
+captured conditions and export textured meshes. MobileN-                  To address this issue, we decompose the appearance
+eRF [11] proposes to train NeRF on a grid mesh, which can             into view-independent diffuse color cd and view-dependent
+be rendered in real-time. However, their mesh is not ex-              specular color cs using a color grid and two shallow MLPs,
+actly the surface mesh and only exports features as texture,          expressed as follows:
+which have to be rendered with a custom shader and are
+unfriendly for editing. Recent works [32, 36] have found                                        \mathbf {c}_d, \mathbf {f}_s = \psi (\text {MLP}_{1}(E^\text {app}(\mathbf {x}))), \\ \mathbf {c}_s = \psi (\text {MLP}_{2}(\mathbf {f}_s, \mathbf {d})),
+that an exponential density activation can help to concen-                                                                                                                                                                                                  (3)
+trate the density and form better surfaces. We also adopt
+density field to capture correct topology, since the surface          where ψ refers to the sigmoid activation, fs represents the
+can be further refined.                                               intermediate features for the specular color at position x,
+                                                                      and d represents the view direction. The final color is ob-
+                                                                      tained by summing the two terms:
+3. Method
+                                                                                                                                                 \mathbf {c} = \mathbf {c}_d + \mathbf {c}_s,                                                               (4)
+   In this section, we introduce our framework, as shown in
+Figure 2, for reconstructing a textured surface mesh from                 As shown in Figure 3, we successfully separate the dif-
+a collection of RGB images that is compatible with com-               fuse and specular terms. The diffuse color in R3 can be
+mon 3D hardware and software. The training process com-               directly converted to an RGB image texture. Meanwhile,
+prises two stages. Firstly, we train a grid-based NeRF [32]           the specular features fs can also be converted to textures,
+to efficiently initialize the geometry and appearance of the          and the small MLP2 can be fit into a fragment shader fol-
+mesh (Section 3.1). Next, we extract a coarse surface mesh            lowing [11]. Consequently, the specular color can also be
+and fine-tune both surface geometry and appearance (Sec-              exported and rendered later (see Section 3.3 for details).
+tion 3.2). Once the training is complete, we can export a                 Our approach involves baking the lighting conditions
+textured surface mesh in standard formats such as wavefront           into the textures. This is because estimating the environ-
+OBJ and PNG, which is ready-to-use for various down-                  ment lighting can be challenging for realistic datasets, and
+stream applications (Section 3.3).                                    previous studies have observed that this can result in re-
+                                                                      duced rendering quality [60, 33].
+3.1. Efficient NeRF Training (Stage 1)
+                                                                      Loss function. To optimize our model, we use the original
+   In the first stage, we leverage the volumetric NeRF                NeRF’s rendering loss. Given a ray r originating from o
+representation to recover both the geometry and appear-               with direction d, we query the model at positions xi = o +
+ance of arbitrary scenes. The primary goal of this stage              ti d, sequentially sampled along the ray, for densities σi and
+is to efficiently establish topologically accurate geometry           colors ci . The final pixel color is obtained by numerical
+and decomposed appearance in preparation for the subse-               quadrature using the following equation:
+quent surface mesh refinement phase. While direct work
+on polygonal meshes [33] presents challenges in learning                         \label {eq:volume_rendering} \mathbf {\hat C}(\mathbf {r}) = \sum _i T_i \alpha _i \mathbf {c}_i, T_i = \prod _{j < i} (1 - \alpha _j),                                    (5)
+complex geometries, volumetric NeRF [31] provides a more
+
+
+
+                                                                   17741
+ Density Field (Stage 1)                                                                   Surface Mesh (Stage 2)                                                                                                                Texture Exportation
+                                                                                                                                                                            Iterative Mesh Refinement
+                                                                                                                                                                                   Vertex Position
+                                                                  Marching
+                                                                                                                                                                                    Face Density
+                                                                   Cubes
+
+
+
+
+                                                                                                                                    Coarse Mesh                                                             Fine Mesh
+                                                                                                                                                                                                                                         𝒄𝒄d → 𝑰𝑰𝒅𝒅
+ Appearance Field (Stage 1 & 2)
+                                                                                                                                                                              Diffuse
+                                                                                                                                                                                𝒄𝒄d
+                                                                                          MLP1                                                                                           +
+                                                                                                                                       𝒇𝒇s
+                                                                                                                                                                     MLP2       𝒄𝒄s
+                                                                                                                                       𝒅𝒅                                     Specular
+                                                                                                                             View Dir.                                                                      Rendering
+                                                                                                                                                                                                                                         𝒇𝒇s → 𝑰𝑰𝒔𝒔
+
+Figure 2: NeRF2Mesh Framework. The geometry is initially learned with a density grid, and then extracted to form a
+coarse mesh. We optimize it into a fine mesh with more accurate surface and adaptive face density. The appearance is learned
+with a color grid shared by two stages, and decomposed into diffuse and specular terms. After convergence, we can export
+the fine mesh, unwrap its UV coordinates, and bake the appearance into texture images.
+
+
+
+
+          Final Color                                                    Diffuse Color                                                                        Specular Color                       Coarse Mesh (Stage 1)         Fine Mesh (Stage 2)
+
+Figure 3: Appearance Decomposition.                                                                                                                           We separately                  Figure 4: Mesh Refinement. We refine both the geometry
+model the diffuse and specular color.                                                                                                                                                        and appearance of the coarse mesh in stage 2.
+
+where δi = ti+1 −ti is the step size, αi = 1−exp(−σi δi ) is
+                                                                                                                                                                                             where αi is the per-point rendering weight. For unbounded
+the point-wise rendering weight, and Ti is the transmittance.
+                                                                                                                                                                                             outdoor scenes, we also apply Total Variation (TV) regular-
+We minimize the loss between each pixel’s predicted color
+                                                                                                                                                                                             ization on the density field E geo to reduce floaters [43, 8].
+Ĉ(r) and the ground truth color C(r):
+
+                           \label {loss:main} \mathcal {L}_{\text {NeRF}} = \sum _{\mathbf {r}} || \mathbf {C}(\mathbf {r}) - \mathbf {\hat C}(\mathbf {r}) ||^2,               (6)          3.2. Surface Mesh Refinement (Stage 2)
+                                                                                                                                                                                                 After stage 1 converges, we apply Marching Cubes [29]
+We encourage separation of the diffuse and specular terms                                                                                                                                    to extract a coarse mesh Mcoarse from the density field,
+by applying a L2 regularization on the specular color:                                                                                                                                       which serves as the initialization for stage 2. We combine
+                                                                                                                                                                                             differentiable rendering technique with an iterative surface
+                                      \label {loss:sepc} \mathcal {L}_{\text {specular}} = \sum _{i} || \mathbf {c}_s(\mathbf {x}_i) ||^2,                                      (7)
+                                                                                                                                                                                             refinement algorithm. The goal of this stage is to accom-
+                                                                                                                                                                                             plish joint optimization of the geometry and appearance for
+To make the surface sharper, we apply an entropy regular-                                                                                                                                    the coarse mesh extracted in the first stage. The process
+ization on the rendering weights:                                                                                                                                                            involves enhancement of the vertex positions, face density,
+                                                                                                                                                                                             and surface appearance, as depicted in Figure 4.
+    \mathcal {L}_\text {entropy} = - \sum _{i} (\alpha _i \log \alpha _i + (1 - \alpha _i) \log (1 - \alpha _i) )  (8)
+                                                                                                                                                                                             Appearance refinement. We use nvdiffrast [33] to
+
+
+
+                                                                                                                                                                                        17742
+perform differentiable rendering. The mesh undergoes ras-                                                                                                Loss function. To prevent abrupt geometry, we apply a
+terization and the 3D positions are interpolated onto the                                                                                                Laplacian smoothing loss Lsmooth [34, 37]:
+image space pixel-wisely. Since the pixel colors are still
+queried in a point-wise manner, the appearance model from                                                                                                   \label {loss:smooth} \mathcal L_\text {smooth} = \sum _i \sum _{j \in S_i} \frac {1} {|S_i|} ||(\mathbf {v}_i + \mathbf {\Delta v}_i) - (\mathbf {v}_j + \mathbf {\Delta v}_j)||^2,  (11)
+stage 1 can be inherited into stage 2. This eliminates the
+need to learn the appearance from scratch, reducing the re-
+quired training steps for stage 2 to converge. The pixel-wise                                                                                            where Si is the set of neighboring vertex indices for vi . In
+color loss in Equation 6 is still applied in stage 2 to allow                                                                                            addition, we regularize the vertices offset with an L2 loss:
+joint optimization of appearance and geometry.
+Iterative mesh refinement. The coarse mesh Mcoarse are                                                                                                                                                             \label {loss:offset} \mathcal L_\text {offset} = \sum _i ||\mathbf {\Delta v}_i||^2,                                (12)
+often flawed. These flaws include inaccurate vertices and
+dense, evenly-distributed faces, leading to vast disk storage                                                                                            This ensures that the vertices do not move too far from their
+and slow rendering speed. Our goal is to recover delicate                                                                                                original positions.
+meshes resembling human-made ones by refining both ver-
+tex positions and face density.                                                                                                                          3.3. Mesh Exportation
+    Given an initial coarse mesh Mcoarse = {V, F}, we as-                                                                                                    The ultimate goal of our framework is to export a surface
+sign a trainable offset ∆vi to each vertex vi ∈ V. We                                                                                                    mesh with textures that are compatible with commonly used
+use differentiable rendering [23] to optimize these offsets                                                                                              3D hardware and software. We currently have a surface
+by back-propagating the image-space loss gradients [33]. In                                                                                              mesh Mfine from stage 2, but the appearance is still encoded
+contrast, mesh faces are not differentiable and cannot be op-                                                                                            in a 3D color grid. To extract the appearance as texture
+timized via back-propagation in the same way. To address                                                                                                 images, we first unwrap the UV coordinates of Mfine [55].
+this problem, we propose an iterative mesh refinement algo-                                                                                              Subsequently, we bake the surface’s diffuse color cd and
+rithm, which is inspired by the Iteratively Reweighted Least                                                                                             specular features fs into two separate images, Id and Is ,
+Squares (IRLS) algorithm [20]. The key idea is to adap-                                                                                                  respectively.
+tively adjust face density based on previous training errors,                                                                                            Real-time rendering. Our exported mesh can be efficiently
+given that inaccurate surface is among the factors contribut-                                                                                            accelerated and rendered in real-time, as a conventional tex-
+ing to large rendering error. During training, we re-project                                                                                             tured mesh. The diffuse texture Id can be interpreted as an
+the 2D pixel-wise rendering errors from Equation 6 to the                                                                                                RGB image and rendered in most OpenGL-enabled devices
+corresponding mesh faces and accumulate face-wise errors.                                                                                                with 3D software packages (e.g., Blender [13], Unity [17]).
+After a certain number of iterations, we sort all face errors                                                                                            To render the specular color, we adopt the approach pro-
+Eface and determine two thresholds:                                                                                                                      posed in MobileNeRF [11]. We export the weights of the
+                                                                                                                                                         small MLP2 and incorporate them into a fragment shader.
+               e_\text {subdivide} = \text {percentile}(E_\text {face}, 95), \\ e_\text {decimate} = \text {percentile}(E_\text {face}, 50),             This custom shader enables real-time evaluation and the ad-
+                                                                                                                                               (10)      dition of the specular term to the diffuse term, allowing for
+                                                                                                                                                         view-dependent effects.
+Faces with error above esubdivide are mid-point subdi-                                                                                                   Mesh manipulation. Similar to a conventional textured
+vided [12] to increase face density, while faces with error                                                                                              mesh, the mesh we export can be readily modified and
+below edecimate are decimated [16] and remeshed to reduce                                                                                                edited in terms of both geometry and appearance. Addi-
+face density. After the mesh updating, we reinitialize the                                                                                               tionally, it facilitates the combination of multiple exported
+vertex offsets and face errors and continue the training. This                                                                                           meshes, as can be observed in Figure 1.
+process is repeated several times until stage 2 finishes.
+Unbounded scene. Without loss of generality, we are                                                                                                      4. Experiment
+able to model forward-facing [30] and unbounded outdoor
+                                                                                                                                                         4.1. Implementation Details
+scenes [3]. We divide the scene into multiple geometri-
+cally growing regions [−2k , 2k ]3 , k ∈ {0, 1, 2, · · · } similar                                                                                          In the first stage, we train for 30, 000 steps, with each
+to Instant-NGP [32]. Each region exports a separate mesh,                                                                                                step evaluating approximately 218 points. An exponentially
+with the overlapping part automatically excluded to form                                                                                                 decayed learning rate schedule ranging from 1 × 10−2 to
+the complete geometry of the scene. As the outer regions                                                                                                 1 × 10−3 is employed. Specifically, during the initial 1, 000
+(k ≥ 1) have a lower level of detail in comparison to the                                                                                                steps, training solely employs the diffuse color to encourage
+centre region (k = 0), we reduce the marching cubes res-                                                                                                 the appearance factorization. For the second stage, we train
+olution as k increases. The iterative mesh refinement pro-                                                                                               additional 10, 000 to 30, 000 steps based on convergence,
+cedure solely focuses on the center region since the outer                                                                                               and set the learning rate for vertex offsets to 1 × 10−4 .
+regions have relatively simpler geometry.                                                                                                                The Adam [22] optimizer is utilized for both stages. The
+
+
+
+                                                                                                                                                      17743
+         Mobile-NeRF               NVdiffrec                    NeuS                    Ours                  Ground Truth
+
+Figure 5: Surface reconstruction quality on NeRF-synthetic dataset. Our method achieves superior mesh reconstruction
+quality compared to previous methods, especially on thin structures with complex topology. We decimate meshes from
+NeuS [48] to 25% of the original faces since they are too dense to visualize.
+
+                                 Chair    Drums     Ficus      Hotdog   Lego    Materials      Mic    Ship     Mean
+           NeuS [48]             3.95      6.68     2.84        8.36    6.62     4.10          2.99    9.54    5.64
+           NVdiffrec [33]        4.13      8.27     5.47        7.31    5.78     4.98          3.38   25.89    8.15
+           Ours (coarse mesh)    5.76      7.81     6.05        7.09    7.15     4.95          8.71   10.32    7.23
+           Ours (fine mesh)      4.60      6.02     2.44        5.19    5.85     4.51          3.47    8.39    5.06
+
+
+    Table 1: Chamfer Distance ↓ (Unit is 10−3 ) on the NeRF-synthetic dataset compared to the ground truth meshes.
+
+
+coarse mesh is extracted at a resolution of 5123 with a den-      sults on synthetic datasets, as done in NVdiffrec [33]. We
+sity threshold of 10, and its face number is decimated to         provide qualitative assessments of the extracted meshes pro-
+3 × 105 after extraction. We maintain a density grid to           duced by different methods, as shown in Figure 5. Specif-
+facilitate ray pruning, following the approach proposed in        ically, we focus on thin structures such as dense foliage
+Instant-NGP [32]. All experiments are conducted on a sin-         and rope net. Our method successfully reconstructs these
+gle NVIDIA V100 GPU. Please refer to the supplementary            structures with high fidelity, while other methods fail to re-
+materials for more details.                                       construct the complex geometry accurately. Additionally,
+Datasets. We experiment on three datasets to verify the           our method produces meshes with more order and neatness,
+effectiveness and generalization ability of our method: 1)        similar to human-made ground truths.
+NeRF-Synthetic [31] dataset contains 8 synthetic scenes. 2)
+                                                                      To quantify the surface reconstruction quality, we em-
+LLFF [30] dataset contains 8 realitic forward-facing scenes.
+                                                                  ploy the bi-directional Chamfer Distance (CD) metric.
+3) Mip-NeRF 360 [3] dataset contains 3 publicly available
+                                                                  However, as the ground truth meshes may not be surface
+realistic unbounded outdoor scenes. Our method generalize
+                                                                  meshes (e.g., the Lego mesh is actually made up of many
+well to different types of datasets and reconstruct faithful
+                                                                  small bricks), we cast rays from the test cameras and sam-
+mesh even for challenging unbounded scenes.
+                                                                  ple 2.5M points from these ray-surface intersections per
+                                                                  scene. In Table 1, we present the averaged CD for all
+4.2. Comparisons                                                  scenes, demonstrating that our method achieves the best
+4.2.1   Mesh Quality                                              results. We note that our approach performs particularly
+                                                                  well on scenes with complex topology, such as ficus, ship,
+Surface reconstruction. The lack of ground truth meshes           and lego. However, our method performs slightly worse on
+for realistic scenes makes it challenging to measure surface      scenes with lots of non-lambertian surfaces, such as mate-
+reconstruction quality. As such, we primarily compare re-         rials. This originates from the relatively limited capacity of
+
+
+
+                                                               17744
+                       NeRF-synthetic        LLFF       Mip-NeRF 360
+                        #V     #F         #V    #F       #V     #F
+ Ground Truth           631    873         -      -       -      -
+ NeuS [48]             1020   2039         -      -       -      -
+ NVdiffrec [33]         75      80         -      -       -      -
+ MobileNeRF [11]        494    224        830 339       1436   609
+ Ours (coarse mesh)     151    300        231 455        446   886
+ Ours (fine mesh)       200    192        397 446        718   816
+
+
+Table 2: Number of Vertices and Faces ↓ (Unit is 103 ).
+Our method uses relateively fewer vertices and faces on the
+NeRF-synthetic dataset with enhanced mesh quality.
+
+                     NeRF-synthetic         LLFF         Mip-NeRF 360
+                    Disk    Memory     Disk   Memory     Disk  Memory
+ SNeRG [19]         86.75   2707.25   337.25 4312.13      -       -
+ MobileNeRF [11]   125.75   538.38    201.50   759.25   344.60 1080.00
+ Ours               73.53    226.63   124.84   291.50   186.84  411.33
+                                                                                 Mobile-NeRF         Ours (Mesh)        Ground Truth
+
+                                                                            Figure 6: Visualization of rendering quality. Our ex-
+Table 3: Disk Storage and GPU Memory Usage ↓ (MB).                          ported meshes achieve comparable rendering quality on dif-
+We measure the size of exported models and GPU memory                       ferent datasets.
+usage in rendering.
+
+
+our appearance network, as our model attempts to replicate
+these lighting effects by adjusting the surface but ends up
+with erroneous geometry.
+Mesh size. We also evaluate the practical applicability by
+comparing the number of vertices and faces in the exported
+meshes, as shown in Table 2. Furthermore, we measure
+the disk storage and GPU memory usage required for ren-
+dering the exported meshes, as presented in Table 3. For
+                                                                                 Mobile-NeRF          NVdiffrec            Ours
+fair comparison, the mesh file format is uncompressed OBJ
+& MTL, the texture is PNG, and other metadata is stored                     Figure 7: Visualization of texture images. We show that
+in JSON format. Compared to the ground truth and Mo-                        our textures are more compact and intuitive due to the en-
+bileNeRF [11] on the NeRF-synthetic dataset, our exported                   hanced surface quality.
+meshes contain fewer vertices and faces. This is because the
+iterative mesh refinement process can increase the number
+of vertices to enhance surface details, while simultaneously                NVdiffrec [33] is only capable of reconstructing single ob-
+reducing the number of faces to control mesh size.                          jects. MobileNeRF [11] exports grid-like meshes that lack
+                                                                            smoothness and may not align well with object surfaces.
+                                                                            These meshes rely on texture transparency to carve out the
+4.2.2   Rendering Quality                                                   surface. Although our smooth meshes exhibit worse ren-
+                                                                            dering quality, our meshes without the smoothness regu-
+We present the results of our rendering quality compari-
+                                                                            larization term achieve comparable performance. Figure 6
+son in Table 4. We observe a decrease in rendering qual-
+                                                                            presents a visualization of our meshes’ rendering quality
+ity from NeRF (volume) to mesh. Specifically, we find
+                                                                            and compares them with related methods. In Figure 7, we
+that the smoothness regularization term Lsmooth plays a cru-
+                                                                            also present the texture images exported by different meth-
+cial role in maintaining a balance between surface smooth-
+                                                                            ods. We demonstrate that our high-quality surface meshes
+ness and rendering quality. Disabling this regularization
+                                                                            result in texture images that are more compact and intuitive
+term leads to better rendering quality at the expense of sur-
+                                                                            than those generated by other methods.
+face quality (detailed in Section 4.4). We demonstrate that
+our mesh-based approach yields superior rendering quality
+                                                                            4.3. Efficiency
+compared to NVdiffrec [33], which is state-of-the-art in the
+surface mesh category. Furthermore, our approach gener-                         Our framework demonstrates high efficiency in both
+alizes well to forward-facing and unbounded scenes, while                   training and inference stages. A single NVIDIA V100 GPU
+
+
+
+                                                                         17745
+                                                     NeRF-synthetic                     LLFF                     Mip-NeRF 360
+                               Category
+                                               PSNR↑ SSIM↑ LPIPS↓            PSNR↑     SSIM↑     LPIPS↓    PSNR↑ SSIM↑ LPIPS↓
+ NeRF [31]                                      31.00   0.947      0.081      26.50     0.811     0.250       -        -       -
+                                Volume
+ Ours (volume)                                  30.88   0.951      0.079      26.42     0.824     0.218     22.33    0.538   0.481
+ NVdiffrec [33]               Surface           29.05   0.939      0.081        -         -         -         -        -       -
+ Ours (mesh)                   mesh             29.76   0.940      0.072      24.75     0.780     0.267     22.36    0.493   0.478
+ MobileNeRF [11]             Non-surface        30.90   0.947      0.062      25.91     0.825     0.183     23.06    0.527   0.434
+ Ours (mesh w/o Lsmooth )      mesh             31.04   0.948      0.066      24.90     0.778     0.271     22.74    0.523   0.457
+
+
+Table 4: Rendering Quality Comparison. We report PSNR, SSIM, and LPIPS on different datasets, and compare against
+methods from different categories.
+
+
+                                                                                                    #V       #F      Size (MB)   PSNR
+                                                                           Ours                   58,649   116,698      54.8     31.30
+                                                                           Ours w/o Lsmooth      202,656   396,385     133.0     32.57
+                                                                           Ours w/o refinement   150,276   300,000      74.8     31.06
+
+
+                                                                        Table 5: Quantitative Ablation. We report the mesh statis-
+                                                                        tics and PSNR on the Mic scene.
+
+
+                                                                        2) When the iterative mesh refinement is removed, the face
+                                                                        density becomes nearly uniform, resulting in a larger mesh
+                                                                        size and slightly inferior rendering quality. This illustrates
+                                                                        the advantages of modifying face density according to the
+                                                                        errors in the re-projected rendering.
+
+       Ours            Ours w/o ℒ𝑠𝑠𝑠𝑠𝑠𝑠𝑠𝑠𝑠𝑠𝑠   Ours w/o refinement      5. Limitations and Conclusion
+Figure 8: Qualitative Ablation. We visualize the mesh                       Although our method has shown promising results, it
+structure and texture images for the Mic scene.                         still has several limitations. Due to the difficulty of esti-
+                                                                        mating unknown lighting conditions from images without
+                                                                        compromising reconstruction quality [60], we have chosen
+with 16GB memory takes roughly 1 hour for the training of               to bake illumination into textures, which consequently re-
+the two stages and mesh exportation per scene. In contrast,             stricts our ability to perform relighting. Our relatively small
+other competing methods often require several hours [33]                appearance network also struggles to learn complex view-
+or even days [11], with higher hardware demands to com-                 dependent effects, confounding iterative surface refinement
+plete similar tasks. Furthermore, the exported meshes are               and resulting in inferior surface quality within these re-
+lightweight, allowing for real-time rendering on OpenGL-                gions. In the future, we hope to address these limitations by
+enabled devices, including mobile devices.                              leveraging better appearance modeling techniques. Lastly,
+                                                                        similar to other mesh-based methods [33, 11], we perform
+4.4. Ablation Studies                                                   a single-pass rasterization and are unable to handle semi-
+    In Figure 8 and Table 5, we conduct an ablation study               transparency.
+focusing on the geometry optimization stage. Specifically,                  In summary, we present an efficient framework that can
+we compare the full model against variants that exclude ei-             reconstruct textured surface meshes from multi-view RGB
+ther the smoothness regularization Lsmooth or the iterative             images. Our approach utilizes NeRF for coarse geometry
+mesh refinement process. The results indicate that: 1) When             and appearance initialization, subsequently extracts and en-
+the smoothness regularization is removed, despite the better            hances a polygonal mesh, and ultimately bakes the appear-
+rendering quality, the resulting mesh exhibits irregularities           ance into texture images for real-time rendering. The recon-
+and self-intersections. The mesh size increases due to the              structed meshes demonstrate an enhanced surface quality,
+failure of the iterative mesh refinement algorithm to work              particularly for thin structures, and are convenient to ma-
+well with such irregular surfaces. Moreover, these irregu-              nipulation and editing fow downstream applications.
+lar faces lead to poor UV quality and messy texture images.
+
+
+
+                                                                     17746
+Acknowledgements.         This work is supported by                       [12] Paolo Cignoni, Marco Callieri, Massimiliano Corsini, Mat-
+the Sichuan Science and Technology Program                                     teo Dellepiane, Fabio Ganovelli, and Guido Ranzuglia.
+(2023YFSY0008), National Natural Science Founda-                               MeshLab: an Open-Source Mesh Processing Tool. In Vit-
+tion of China (61632003, 61375022, 61403005), Grant                            torio Scarano, Rosario De Chiara, and Ugo Erra, editors,
+SCITLAB-20017 of Intelligent Terminal Key Laboratory                           Eurographics Italian Chapter Conference. The Eurograph-
+                                                                               ics Association, 2008. 5
+of SiChuan Province, Beijing Advanced Innovation Center
+                                                                          [13] Blender Online Community. Blender - a 3D modelling and
+for Intelligent Robots and Systems (2018IRS11), and
+                                                                               rendering package. Blender Foundation, Stichting Blender
+PEK-SenseTime Joint Laboratory of Machine Vision.                              Foundation, Amsterdam, 2018. 5
+                                                                          [14] François Darmon, Bénédicte Bascle, Jean-Clément Devaux,
+References                                                                     Pascal Monasse, and Mathieu Aubry. Improving neural im-
+ [1] Benjamin Attal, Jia-Bin Huang, Christian Richardt, Michael                plicit surfaces geometry with patch warping. In CVPR, pages
+     Zollhoefer, Johannes Kopf, Matthew O’Toole, and Changil                   6260–6269, 2022. 3
+     Kim. Hyperreel: High-fidelity 6-dof video with ray-                  [15] Qiancheng Fu, Qingshan Xu, Yew-Soon Ong, and Wenbing
+     conditioned sampling. arXiv preprint arXiv:2301.02238,                    Tao. Geo-neus: geometry-consistent neural implicit sur-
+     2023. 2                                                                   faces learning for multi-view reconstruction. arXiv preprint
+ [2] Jonathan T Barron, Ben Mildenhall, Matthew Tancik, Peter                  arXiv:2205.15848, 2022. 3
+     Hedman, Ricardo Martin-Brualla, and Pratul P Srinivasan.             [16] Michael Garland and Paul S Heckbert. Surface simplification
+     Mip-nerf: A multiscale representation for anti-aliasing neu-              using quadric error metrics. 1997. 5
+     ral radiance fields. In ICCV, pages 5855–5864, 2021. 1, 2            [17] John K Haas. A history of the unity game engine. 2014. 5
+ [3] Jonathan T. Barron, Ben Mildenhall, Dor Verbin, Pratul P.            [18] Jon Hasselgren, Nikolai Hofmann, and Jacob Munkberg.
+     Srinivasan, and Peter Hedman. Mip-nerf 360: Unbounded                     Shape, Light, and Material Decomposition from Im-
+     anti-aliased neural radiance fields. CVPR, 2022. 2, 5, 6                  ages using Monte Carlo Rendering and Denoising.
+ [4] Sai Bi, Zexiang Xu, Pratul Srinivasan, Ben Mildenhall,                    arXiv:2206.03380, 2022. 2
+     Kalyan Sunkavalli, Miloš Hašan, Yannick Hold-Geoffroy,             [19] Peter Hedman, Pratul P. Srinivasan, Ben Mildenhall,
+     David Kriegman, and Ravi Ramamoorthi. Neural re-                          Jonathan T. Barron, and Paul Debevec. Baking neural ra-
+     flectance fields for appearance acquisition. arXiv preprint               diance fields for real-time view synthesis. ICCV, 2021. 7
+     arXiv:2008.03824, 2020. 2                                            [20] Paul W Holland and Roy E Welsch. Robust regression us-
+ [5] Mark Boss, Raphael Braun, Varun Jampani, Jonathan T. Bar-                 ing iteratively reweighted least-squares. Communications in
+     ron, Ce Liu, and Hendrik P.A. Lensch. Nerd: Neural re-                    Statistics-theory and Methods, 6(9):813–827, 1977. 5
+     flectance decomposition from image collections. In ICCV,
+                                                                          [21] Krishna Murthy Jatavallabhula, Edward Smith, Jean-
+     2021. 2
+                                                                               Francois Lafleche, Clement Fuji Tsang, Artem Rozantsev,
+ [6] Mark Boss, Andreas Engelhardt, Abhishek Kar, Yuanzhen
+                                                                               Wenzheng Chen, Tommy Xiang, Rev Lebaredian, and Sanja
+     Li, Deqing Sun, Jonathan T Barron, Hendrik Lensch, and
+                                                                               Fidler. Kaolin: A pytorch library for accelerating 3d deep
+     Varun Jampani. Samurai: Shape and material from un-
+                                                                               learning research. arXiv preprint arXiv:1911.05063, 2019. 2
+     constrained real-world arbitrary image collections. arXiv
+                                                                          [22] Diederik P Kingma and Jimmy Ba. Adam: A method for
+     preprint arXiv:2205.15768, 2022. 1, 3
+                                                                               stochastic optimization. arXiv preprint arXiv:1412.6980,
+ [7] Junli Cao, Huan Wang, Pavlo Chemerys, Vladislav Shakhrai,
+                                                                               2014. 5
+     Ju Hu, Yun Fu, Denys Makoviichuk, Sergey Tulyakov, and
+     Jian Ren. Real-time neural light field on mobile devices.            [23] Samuli Laine, Janne Hellsten, Tero Karras, Yeongho Seol,
+     arXiv preprint arXiv:2212.08057, 2022. 2                                  Jaakko Lehtinen, and Timo Aila. Modular primitives for
+ [8] Anpei Chen, Zexiang Xu, Andreas Geiger, Jingyi Yu, and                    high-performance differentiable rendering. ACM TOG,
+     Hao Su. Tensorf: Tensorial radiance fields. arXiv preprint                39(6), 2020. 2, 5
+     arXiv:2203.09517, 2022. 1, 2, 3, 4                                   [24] Verica Lazova, Vladimir Guzov, Kyle Olszewski, Sergey
+ [9] Wenzheng Chen, Huan Ling, Jun Gao, Edward Smith,                          Tulyakov, and Gerard Pons-Moll. Control-nerf: Editable fea-
+     Jaakko Lehtinen, Alec Jacobson, and Sanja Fidler. Learn-                  ture volumes for scene rendering and manipulation. arXiv
+     ing to predict 3d objects with an interpolation-based differ-             preprint arXiv:2204.10850, 2022. 2
+     entiable renderer. NeurIPS, 32, 2019. 1, 2                           [25] Yiyi Liao, Simon Donne, and Andreas Geiger. Deep march-
+[10] Wenzheng Chen, Joey Litalien, Jun Gao, Zian Wang,                         ing cubes: Learning explicit surface representations. In
+     Clement Fuji Tsang, Sameh Khamis, Or Litany, and Sanja                    CVPR, pages 2916–2925, 2018. 2
+     Fidler. Dib-r++: learning to predict lighting and material           [26] Shichen Liu, Tianye Li, Weikai Chen, and Hao Li. Soft ras-
+     with a hybrid differentiable renderer. NeurIPS, 34:22834–                 terizer: A differentiable renderer for image-based 3d reason-
+     22848, 2021. 1, 2                                                         ing. In ICCV, pages 7708–7717, 2019. 2
+[11] Zhiqin Chen, Thomas Funkhouser, Peter Hedman, and An-                [27] Steven Liu, Xiuming Zhang, Zhoutong Zhang, Richard
+     drea Tagliasacchi. Mobilenerf: Exploiting the polygon ras-                Zhang, Jun-Yan Zhu, and Bryan Russell. Editing conditional
+     terization pipeline for efficient neural field rendering on mo-           radiance fields. In ICCV, pages 5773–5783, 2021. 2
+     bile architectures. arXiv preprint arXiv:2208.00277, 2022.           [28] Xiaoxiao Long, Cheng Lin, Lingjie Liu, Yuan Liu, Peng
+     1, 3, 5, 7, 8                                                             Wang, Christian Theobalt, Taku Komura, and Wenping
+
+
+
+
+                                                                       17747
+     Wang. Neuraludf: Learning unsigned distance fields for               [43] Cheng Sun, Min Sun, and Hwann-Tzong Chen. Direct voxel
+     multi-view reconstruction of surfaces with arbitrary topolo-              grid optimization: Super-fast convergence for radiance fields
+     gies. arXiv preprint arXiv:2211.14173, 2022. 3                            reconstruction. CVPR, 2022. 2, 3, 4
+[29] William E Lorensen and Harvey E Cline. Marching cubes:               [44] Jiaxiang Tang, Xiaokang Chen, Jingbo Wang, and Gang
+     A high resolution 3d surface construction algorithm. SIG-                 Zeng. Compressible-composable nerf via rank-residual de-
+     GRAPH, 21(4):163–169, 1987. 2, 3, 4                                       composition. arXiv preprint arXiv:2205.14870, 2022. 2
+[30] Ben Mildenhall, Pratul P. Srinivasan, Rodrigo Ortiz-Cayon,           [45] Itsuki Ueda, Yoshihiro Fukuhara, Hirokatsu Kataoka, Hi-
+     Nima Khademi Kalantari, Ravi Ramamoorthi, Ren Ng, and                     roaki Aizawa, Hidehiko Shishido, and Itaru Kitahara. Neu-
+     Abhishek Kar. Local light field fusion: Practical view syn-               ral density-distance fields. In ECCV, pages 53–68. Springer,
+     thesis with prescriptive sampling guidelines. ACM TOG,                    2022. 3
+     2019. 5, 6                                                           [46] Dor Verbin, Peter Hedman, Ben Mildenhall, Todd Zickler,
+[31] Ben Mildenhall, Pratul P. Srinivasan, Matthew Tancik,                     Jonathan T. Barron, and Pratul P. Srinivasan. Ref-NeRF:
+     Jonathan T. Barron, Ravi Ramamoorthi, and Ren Ng. Nerf:                   Structured view-dependent appearance for neural radiance
+     Representing scenes as neural radiance fields for view syn-               fields. CVPR, 2022. 2
+     thesis. In ECCV, 2020. 1, 2, 3, 6, 8                                 [47] Can Wang, Menglei Chai, Mingming He, Dongdong
+[32] Thomas Müller, Alex Evans, Christoph Schied, and Alexan-                 Chen, and Jing Liao. Clip-nerf: Text-and-image driven
+     der Keller. Instant neural graphics primitives with a multires-           manipulation of neural radiance fields. arXiv preprint
+     olution hash encoding. ACM TOG, 2022. 1, 2, 3, 5, 6                       arXiv:2112.05139, 2021. 2
+[33] Jacob Munkberg, Jon Hasselgren, Tianchang Shen, Jun Gao,             [48] Peng Wang, Lingjie Liu, Yuan Liu, Christian Theobalt, Taku
+     Wenzheng Chen, Alex Evans, Thomas Müller, and Sanja Fi-                  Komura, and Wenping Wang. Neus: Learning neural implicit
+     dler. Extracting triangular 3d models, materials, and lighting            surfaces by volume rendering for multi-view reconstruction.
+     from images. In CVPR, 2022. 1, 2, 3, 4, 5, 6, 7, 8                        arXiv preprint arXiv:2106.10689, 2021. 2, 3, 6, 7
+[34] Andrew Nealen, Takeo Igarashi, Olga Sorkine, and Marc
+                                                                          [49] Tong Wu, Jiaqi Wang, Xingang Pan, Xudong Xu, Christian
+     Alexa. Laplacian mesh optimization. In Proceedings of
+                                                                               Theobalt, Ziwei Liu, and Dahua Lin. Voxurf: Voxel-based
+     the 4th international conference on Computer graphics and
+                                                                               efficient and accurate neural surface reconstruction. arXiv
+     interactive techniques in Australasia and Southeast Asia,
+                                                                               preprint arXiv:2208.12697, 2022. 3
+     pages 381–389, 2006. 5
+                                                                          [50] Fanbo Xiang, Zexiang Xu, Milos Hasan, Yannick Hold-
+[35] Keunhong Park, Utkarsh Sinha, Jonathan T Barron, Sofien
+                                                                               Geoffroy, Kalyan Sunkavalli, and Hao Su. Neutex: Neural
+     Bouaziz, Dan B Goldman, Steven M Seitz, and Ricardo
+                                                                               texture mapping for volumetric neural rendering. In CVPR,
+     Martin-Brualla. Nerfies: Deformable neural radiance fields.
+                                                                               pages 7119–7128, 2021. 2
+     In ICCV, pages 5865–5874, 2021. 2
+                                                                          [51] Bangbang Yang, Chong Bao, Junyi Zeng, Hujun Bao, Yinda
+[36] Ben Poole, Ajay Jain, Jonathan T Barron, and Ben Milden-
+                                                                               Zhang, Zhaopeng Cui, and Guofeng Zhang. Neumesh:
+     hall. Dreamfusion: Text-to-3d using 2d diffusion. arXiv
+                                                                               Learning disentangled neural mesh-based implicit field for
+     preprint arXiv:2209.14988, 2022. 3
+                                                                               geometry and texture editing. In Computer Vision–ECCV
+[37] Nikhila Ravi, Jeremy Reizenstein, David Novotny, Tay-
+                                                                               2022: 17th European Conference, Tel Aviv, Israel, Octo-
+     lor Gordon, Wan-Yen Lo, Justin Johnson, and Georgia
+                                                                               ber 23–27, 2022, Proceedings, Part XVI, pages 597–614.
+     Gkioxari. Accelerating 3d deep learning with pytorch3d.
+                                                                               Springer, 2022. 3
+     arXiv:2007.08501, 2020. 5
+[38] Christian Reiser, Songyou Peng, Yiyi Liao, and Andreas               [52] Bangbang Yang, Yinda Zhang, Yinghao Xu, Yijin Li, Han
+     Geiger. Kilonerf: Speeding up neural radiance fields with                 Zhou, Hujun Bao, Guofeng Zhang, and Zhaopeng Cui.
+     thousands of tiny mlps. ICCV, 2021. 2                                     Learning object-compositional neural radiance field for ed-
+                                                                               itable scene rendering. In ICCV, October 2021. 2
+[39] Christian Reiser, Richard Szeliski, Dor Verbin, Pratul P
+     Srinivasan, Ben Mildenhall, Andreas Geiger, Jonathan T               [53] Lior Yariv, Jiatao Gu, Yoni Kasten, and Yaron Lipman.
+     Barron, and Peter Hedman. Merf: Memory-efficient radi-                    Volume rendering of neural implicit surfaces. NeurIPS,
+     ance fields for real-time view synthesis in unbounded scenes.             34:4805–4815, 2021. 2, 3
+     arXiv preprint arXiv:2302.12249, 2023. 2                             [54] Lior Yariv, Peter Hedman, Christian Reiser, Dor Verbin,
+[40] Sara Fridovich-Keil and Alex Yu, Matthew Tancik, Qinhong                  Pratul P.Srinivasan, Richard Szeliski, Jonathan T.Barron, and
+     Chen, Benjamin Recht, and Angjoo Kanazawa. Plenoxels:                     Ben Mildenhall. Bakedsdf: Meshing neural sdfs for real-
+     Radiance fields without neural networks. In CVPR, 2022. 2,                time view synthesis. arXiv preprint arXiv:2302.14859, 2023.
+     3                                                                         1, 3
+[41] Tianchang Shen, Jun Gao, Kangxue Yin, Ming-Yu Liu, and               [55] Jonathan Young. Xatlas, 2021. 5
+     Sanja Fidler. Deep marching tetrahedra: a hybrid repre-              [56] Alex Yu, Ruilong Li, Matthew Tancik, Hao Li, Ren Ng, and
+     sentation for high-resolution 3d shape synthesis. NeurIPS,                Angjoo Kanazawa. PlenOctrees for real-time rendering of
+     34:6087–6101, 2021. 2                                                     neural radiance fields. In ICCV, 2021. 2
+[42] Pratul P Srinivasan, Boyang Deng, Xiuming Zhang,                     [57] Zehao Yu, Songyou Peng, Michael Niemeyer, Torsten Sat-
+     Matthew Tancik, Ben Mildenhall, and Jonathan T Barron.                    tler, and Andreas Geiger. Monosdf: Exploring monocu-
+     Nerv: Neural reflectance and visibility fields for relighting             lar geometric cues for neural implicit surface reconstruction.
+     and view synthesis. In CVPR, pages 7495–7504, 2021. 2                     arXiv preprint arXiv:2206.00665, 2022. 2, 3
+
+
+
+
+                                                                       17748
+[58] Kai Zhang, Fujun Luan, Qianqian Wang, Kavita Bala, and
+     Noah Snavely. PhySG: Inverse rendering with spherical
+     gaussians for physics-based material editing and relighting.
+     In The IEEE/CVF Conference on Computer Vision and Pat-
+     tern Recognition (CVPR), 2021. 2
+[59] Kai Zhang, Gernot Riegler, Noah Snavely, and Vladlen
+     Koltun. Nerf++: Analyzing and improving neural radiance
+     fields. arXiv preprint arXiv:2010.07492, 2020. 2
+[60] Xiuming Zhang, Pratul P Srinivasan, Boyang Deng, Paul De-
+     bevec, William T Freeman, and Jonathan T Barron. Nerfac-
+     tor: Neural factorization of shape and reflectance under an
+     unknown illumination. ACM TOG, 40(6):1–18, 2021. 2, 3, 8
+
+
+
+
+                                                                    17749
+

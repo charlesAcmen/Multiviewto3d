@@ -1,0 +1,47 @@
+[
+  {
+    "name": "ssp.pdf",
+    "url": "https://openaccess.thecvf.com/content/WACV2024/papers/Zhu_SSP_Semi-Signed_Prioritized_Neural_Fitting_for_Surface_Reconstruction_From_Unoriented_WACV_2024_paper.pdf",
+    "checked_date": "2026-10-19",
+    "status": "downloaded",
+    "bytes": 2994088,
+    "sha256": "762E7E877BFD0A99D5326953F52BA5C0F9F3E2A3E0CF1B6AC6F4AF35CCF1D23B",
+    "scope": "Read sections 3.2, 3.3, 4; extracted with pdftotext"
+  },
+  {
+    "name": "code/ssp_fitting.py",
+    "url": "https://raw.githubusercontent.com/Runsong123/SSP/main/code/reconstruction/SSP.py",
+    "checked_date": "2026-10-19",
+    "status": "downloaded",
+    "bytes": 52913,
+    "sha256": "A7A3BFC588CDB3683F64177F81ADA79E23DB4A57202E719F32F7D686F4E0C5AF",
+    "scope": "Static read only; moving main snapshot; not executed"
+  },
+  {
+    "name": "gsnsr_page_20261019.html",
+    "url": "https://diglib.eg.org/items/6869b7a4-d955-48f9-974a-fe84a18b4f43",
+    "checked_date": "2026-10-19",
+    "status": "downloaded",
+    "bytes": 451702,
+    "sha256": "EC269A7E15C9EDF23EB886523C78519F635B82C2266D3E4626213B57A3597A36",
+    "scope": "Publisher metadata and PDF URL"
+  },
+  {
+    "name": "gsnsr.pdf",
+    "url": "https://diglib.eg.org/bitstreams/16e092e4-95f4-4943-98b5-d6422220268e/download",
+    "checked_date": "2026-10-19",
+    "status": "downloaded",
+    "bytes": 5933268,
+    "sha256": "D98D1E5326A73FC1B9BDB4D522E653A159D139E1FD3CB62837A1D05685E4C45B",
+    "scope": "Read sections 4.1-4.2, 5.1-5.2; extracted with pdftotext"
+  },
+  {
+    "name": "nerf2mesh.pdf",
+    "url": "https://openaccess.thecvf.com/content/ICCV2023/papers/Tang_Delicate_Textured_Mesh_Recovery_from_NeRF_via_Adaptive_Surface_Refinement_ICCV_2023_paper.pdf",
+    "checked_date": "2026-10-19",
+    "status": "downloaded",
+    "bytes": 8763226,
+    "sha256": "B2FFB0489CE2FA1A6F9891ED3E5484CA3B80F0C1BD1287F1A1735030539C7681",
+    "scope": "Read section 3.2, implementation and resource reporting; extracted with pdftotext"
+  }
+]

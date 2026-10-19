@@ -1,0 +1,881 @@
+Eurographics Symposium on Rendering (2026)
+I. Gkioulekas and A. Jarabo (Editors)
+
+
+
+
+ GSNSR: Improving Neural Surface Reconstruction with Geometric
+                 and Color Priors from 3DGS
+
+                                                                 WenYu Ding 1,3               WanRu Song2,3 Feng Liu1,2,3∗
+       1 School of Communications and Information Engineering, Nanjing University of Posts and Telecommunications, Nanjing, 210003, JiangSu, China
+          2 Research Center for Education Artificial Intelligence, Nanjing University of Posts and Telecommunications, Nanjing, 210023, JiangSu, China
+     3 Jiangsu Key Laboratory of Intelligent Information Processing and Communication Technology, Nanjing University of Posts and Telecommunications,
+
+                                                                                 Nanjing, 210003, JiangSu, China
+
+
+
+
+                                                      G
+           Gaussian Representation
+                                                      S                     Ground Truth                   Rendered Image        Surface Mesh
+                                                      N
+                                                      S
+                                                      R
+
+              Colmap Point Cloud                                              Depth Map                     Normal Map            Surface Mesh
+
+Figure 1: Surface reconstruction by GSNSR on Lego and Mic from the NeRF Synthetic dataset. Taking a pretrained Gaussian model and
+a Colmap point cloud as inputs (left), GSNSR progressively refines geometry across training stages, with the final reconstruction shown as
+rendered RGB, depth, and normal maps (center) alongside the extracted mesh (right). For Lego, the reconstructed mesh accurately recovers
+holes without introducing artifacts, while for Mic, GSNSR successfully reconstructs the high-frequency mesh structure with fine geometric
+fidelity.
+
+         Abstract
+         Neural implicit surfaces and 3D Gaussian Splatting (3DGS) bring complementary strengths to 3D reconstruction, with implicit
+         surfaces yielding coherent geometry and consistent topology while 3DGS captures high-frequency appearance details. Recent
+         hybrid methods couple the two representations primarily through depth and normal consistency losses, which is insufficient
+         to resolve the geometric ambiguities inherent to volume rendering. We propose GSNSR, a neural implicit surface framework
+         that leverages 3DGS in two complementary ways to guide SDF optimization, refining global object contours and recovering
+         fine geometric and appearance details. For contour refinement, we introduce a confidence-aware free-space loss that weights
+         pseudo-depth by per-pixel reliability to suppress spurious density in unoccupied regions. For detail recovery, we forgo 3DGS
+         depth as a feature anchor and instead use the ray-surface intersection predicted by the SDF network itself. At this anchor, a
+         decoupled aggregator separately consolidates geometric and appearance attributes from neighboring Gaussians via distance-
+         based weighting, providing the SDF and color networks with non-interfering guidance. Extensive experiments on the DTU
+         and NeRF Synthetic datasets demonstrate that GSNSR achieves highly competitive reconstruction accuracy while significantly
+         suppressing artifacts in challenging scenes.
+         CCS Concepts
+         • Computing methodologies → Volumetric models;
+© 2026 The Author(s).
+Proceedings published by Eurographics - The European Association for Computer Graphics.
+This is an open access article under the terms of the Creative Commons Attribution License, which
+permits use, distribution and reproduction in any medium, provided the original work is properly
+cited.
+
+%0*TS
+
+                                                                                                                             https://www.eg.org          https://diglib.eg.org
+2 of 12           W. Ding & W. Song & F. Liu / GSNSR: Improving Neural Surface Reconstruction with Geometric and Color Priors from 3DGS
+
+1. Introduction                                                             score that combines local depth support, local stability, and view-
+                                                                            dependent geometric reliability, and convert it into per-pixel loss
+Recovering high-fidelity 3D structures from 2D images is a fun-
+                                                                            weights. This imposes stricter free-space constraints where the
+damental challenge in computer vision, with broad applications in
+                                                                            pseudo depth is trustworthy while relaxing them in uncertain re-
+AR/VR, robotics, and cultural heritage preservation. Among exist-
+                                                                            gions, so the constraint suppresses artifacts while largely prevent-
+ing approaches, multi-view 3D surface reconstruction has attracted
+                                                                            ing unreliable depth from injecting erroneous geometry.
+significant attention for its accessibility, requiring only calibrated
+images rather than specialized scanning hardware. Recent advances              To recover fine geometric and appearance detail, we further fuse
+in neural implicit representations, such as signed distance func-           3DGS features into the SDF network at the architectural level. The
+tions (SDFs) optimized via volume rendering, have demonstrated              key difficulty here is where and how the discrete Gaussian fea-
+remarkable ability to reconstruct smooth, topologically consistent          tures are injected into the continuous field. Prior fusion methods
+surfaces. However, these methods still struggle with geometric am-          anchor the injection at the 3DGS-rendered depth, so any error in
+biguities in complex or sparsely observed regions, motivating the           that depth directly displaces the anchor and corrupts the local ge-
+need for stronger geometric priors.                                         ometry. Instead, we localize the anchor from the SDF field itself
+                                                                            via the ray-surface intersection implied by a sign change along the
+   A pioneering work, NeRF [MST∗ 20], harnesses differentiable
+                                                                            ray; this severs the dependence on unreliable Gaussian depth and
+volume rendering to achieve novel view synthesis. To enable more
+                                                                            lets the anchor sharpen together with the geometry network during
+precise geometric recovery, NeuS [WLL∗ 21] integrates the Signed
+                                                                            training. At this anchor, rather than hard-replacing the nearest sam-
+Distance Function (SDF) into this framework, achieving high-
+                                                                            ple’s feature, we adopt a distance-based fusion strategy that aggre-
+fidelity surface reconstruction by ensuring geometric consistency
+                                                                            gates neighboring Gaussians and redistributes the result to the two
+during the rendering process. Nevertheless, NeuS suffers from slow
+                                                                            samples bracketing the intersection by their distance to it, supply-
+convergence due to inefficient position encoding, often extending
+                                                                            ing spatially grounded guidance. To deliver geometry and appear-
+training times to several hours. Recently, 3DGS [KKLD23] has
+                                                                            ance cues without interference, the aggregated features are routed
+emerged as a compelling alternative that represents scenes through
+                                                                            through separate geometry and color pathways.
+a collection of anisotropic Gaussians, enabling significantly faster
+rendering via GPU-accelerated rasterization. However, 3DGS is in-              In summary, our main contributions are as follows:
+herently designed for novel view synthesis rather than surface re-
+                                                                            • We introduce a confidence-aware free-space loss that con-
+construction, and its discrete nature makes it ill-suited for precise
+                                                                              verts 3DGS-rendered pseudo depth into an explicit, per-
+surface reconstruction.
+                                                                              pixel reliability-weighted free-space prior, directly suppressing
+   Implicit SDFs excel at surface topology while 3DGS captures                floaters and spurious density.
+high-frequency appearance details. This complementary relation-             • We propose an SDF-guided fusion scheme that derives the
+ship motivates a hybrid paradigm that couples 3DGS with implicit              feature-injection anchor from the ray-surface intersection, and
+SDF representations. Representative works [LSH∗ 24, YLX∗ 24]                  redistributes the aggregated Gaussian features to the samples by
+demonstrate that jointly optimizing these two representations can             distance, yielding faithful guidance while preserving representa-
+accelerate convergence and improve reconstruction fidelity com-               tional continuity. Geometry and appearance attributes are routed
+pared to SDF-only baselines. These methods commonly adopt ren-                through separate pathways to avoid cross-interference.
+dered depth and normal maps from 3DGS as geometric constraints,             • Evaluations on the DTU and NeRF Synthetic datasets demon-
+supervising the SDF network to align with the Gaussian-derived                strate that GSNSR achieves competitive surface reconstruc-
+geometry. However, such coupling operates primarily at the loss-              tion accuracy while effectively reducing artifacts in challenging
+function level, leaving the fundamental ambiguity of volume ren-              scenes.
+dering unresolved. As a result, these methods remain vulnerable to
+the quality of 3DGS geometry. If the Gaussians fail to converge to
+                                                                            2. Related Work
+accurate surfaces, the erroneous depth and normal cues propagate
+into SDF optimization, potentially misleading rather than benefit-          2.1. 3D neural surface reconstruction
+ing reconstruction.
+                                                                            NeRF [MST∗ 20] pioneered differentiable volume rendering for
+   Building upon this motivation, we propose GSNSR, a hybrid                neural implicit representations, enabling high-quality novel view
+neural surface reconstruction framework that leverages 3DGS as              synthesis from multi-view images. Subsequent works have ex-
+a geometric and photometric prior to drive SDF optimization. Our            tended this paradigm in complementary directions. Mip-NeRF
+central observation is that volume rendering provides no explicit           [BMT∗ 21] mitigates multi-scale aliasing artifacts through inte-
+supervision over unoccupied space, so the network readily con-              grated positional encoding over conical frustums, while Instant-
+verges to spurious density and floaters, especially in sparsely ob-         NGP [MESK22] introduces multi-resolution hash encoding to dra-
+served regions. We introduce a confidence-aware free-space loss             matically accelerate training convergence. Despite these advances
+that turns the 3DGS-rendered pseudo depth into an explicit free-            in rendering fidelity and efficiency, NeRF-based methods model
+space prior, enforcing that rays accumulate no opacity before reach-        scene geometry through a volumetric density field that lacks ex-
+ing the surface localized by the pseudo depth. This directly at-            plicit surface correspondence; meshes extracted via density thresh-
+tacks the volume-rendering ambiguity that loss-level depth and nor-         olding are therefore typically noisy and topologically ill-defined,
+mal consistency leave unresolved. Crucially, because 3DGS depth             motivating subsequent research into surface-aware neural render-
+is not unconditionally reliable, we design a per-pixel confidence           ing.
+
+                                                                                                                                                   © 2026 The Author(s).
+                                                                                 Proceedings published by Eurographics - The European Association for Computer Graphics.
+              W. Ding & W. Song & F. Liu / GSNSR: Improving Neural Surface Reconstruction with Geometric and Color Priors from 3DGS                    3 of 12
+
+   Existing surface reconstruction approaches can be mainly cat-                          2.2. Hybrid representation neural surface reconstruction
+egorized into volume rendering methods based on Neural Im-
+                                                                                          Recent hybrid approaches typically employ joint optimization that
+plicit Fields and explicit representation methods based on 3DGS
+                                                                                          combines the complementary strengths of 3D Gaussian Splatting
+[WYZ∗ 24, CW24]. Combining volume rendering with Signed Dis-
+                                                                                          (3DGS) and Signed Distance Function (SDF)-based representa-
+tance Fields (SDF) has proven effective for acquiring high-fidelity
+                                                                                          tions. Specifically, 3DGS provides efficient, view-dependent ap-
+geometric models in implicit reconstruction. NeuS [WLL∗ 21] for-
+                                                                                          pearance modeling through explicit, rasterization-friendly Gaus-
+mulates surface rendering via an unbiased SDF-based volume den-
+                                                                                          sian primitives, enabling real-time rendering with high visual fi-
+sity, while VolSDF [YGKL21] models volume density as a trans-
+                                                                                          delity. Meanwhile, the SDF-based neural representation serves as a
+formed SDF, establishing a principled connection between the two
+                                                                                          geometrically rigorous implicit surface prior, enforcing smooth and
+representations and enabling accurate surface localization through
+                                                                                          topologically consistent surface reconstruction [ZLH24, CLWL25,
+tighter control over the density-to-geometry mapping. However,
+                                                                                          XLC∗ 25]. GSDF [YLX∗ 24] designs a dual-branch system with
+NeuS often faces slow convergence challenges stemming from po-
+                                                                                          synchronized optimization, where depth maps rendered by the
+sitional encoding. Several follow-up works have sought to address
+                                                                                          GS branch narrow and guide the ray-sampling range of the SDF
+this limitation from different angles. NeuS2 [WHH∗ 23] replaces
+                                                                                          branch, while SDF-predicted geometry provides spatial guidance
+positional encoding with multi-resolution hash grids, achieving
+                                                                                          to regulate the density of 3D Gaussian primitives. This joint super-
+significantly faster convergence while maintaining reconstruction
+                                                                                          vision enables mutual reinforcement between the two tasks. How-
+quality comparable to the original NeuS. Instant-NSR [ZJY∗ 22] in-
+                                                                                          ever, this dual-branch coupling also introduces a fundamental vul-
+tegrates hash grids with SDF, specifically tailoring the framework
+                                                                                          nerability. Since 3DGS is inherently an appearance-first render-
+for human performance reconstruction. Although utilizing occu-
+                                                                                          ing framework, its optimizer tends to generate floaters at view-
+pancy grids facilitates efficient sampling and pruning, optimization
+                                                                                          dependent boundaries and high-frequency texture regions to mini-
+is prone to local minima, particularly in regions with occlusion or
+                                                                                          mize photometric loss. These floaters bear no correspondence to the
+uneven lighting. Beyond convergence speed, reconstruction accu-
+                                                                                          true object surface yet effectively compensate for rendering resid-
+racy also demands further improvement. Neuralangelo [LME∗ 23]
+                                                                                          uals. Consequently, the depth maps produced via alpha-blending
+leverages multi-resolution hash encoding alongside numerical gra-
+                                                                                          represent a weighted expectation over all Gaussians along each
+dients for higher-order smoothness regularization, enabling the re-
+                                                                                          ray, rather than a faithful measurement of surface depth. When
+covery of large-scale scenes with fine-grained surface details.
+                                                                                          such geometrically unreliable depth estimates are fed back as su-
+                                                                                          pervisory signals into the SDF branch, the resulting gradients can
+                                                                                          systematically bias the zero-level set, giving rise to spurious sur-
+                                                                                          faces or localized geometric collapse. An inherent conflict arises
+                                                                                          between the photometric constraints of the 3DGS branch and the
+   3DGS [KKLD23] has gained attention for its impressive novel-
+                                                                                          geometric regularization of the SDF branch. This creates a trade-
+view synthesis quality and real-time rendering speed. As a discrete
+                                                                                          off where favoring 3DGS supervision yields noisy surfaces, while
+explicit representation, it encodes scene geometry through a set of
+                                                                                          strict SDF constraints lead to over-smoothed details. One line of
+anisotropic Gaussians, enabling GPU-accelerated rasterization that
+                                                                                          research addresses this by imposing stronger geometric regular-
+is orders of magnitude faster than NeRF-based methods. This ef-
+                                                                                          ization on Gaussian primitives to improve their surface alignment,
+ficiency makes 3DGS an attractive foundation for surface recon-
+                                                                                          while another explores more principled fusion strategies that go be-
+struction, as it can produce a reasonable geometric scaffold within
+                                                                                          yond depth supervision, seeking to extract and transfer richer geo-
+minutes rather than hours. To extract explicit surfaces from Gaus-
+                                                                                          metric and photometric information latent in the Gaussian repre-
+sian primitives, several works have proposed geometry regulariza-
+                                                                                          sentation to the implicit network.
+tion strategies. SuGaR [GL24] introduces a regularization term that
+encourages Gaussians to align with object surfaces, enabling mesh                            In fact, a well-pretrained 3DGS model inherently encodes rich
+extraction via Poisson reconstruction. 2DGS [HYC∗ 24] replaces                            spatial occupancy and appearance distributions, making it a robust
+volumetric 3D Gaussians with flat 2D disks, which are inherently                          prior for implicit surface reconstruction. SplatSDF [LSD∗ 24] ex-
+better suited for surface fitting and allow more accurate normal es-                      tends Neuralangelo by aggregating the geometric and appearance
+timation. GOF [YSG24] models scene geometry as the level set                              attributes of Gaussian primitives into high-dimensional feature rep-
+of a Gaussian opacity field, enabling direct isosurface extraction                        resentations. Rather than applying post consistency constraints,
+without post-processing. Despite these advances, 3DGS-based sur-                          SplatSDF pursues an architecture-level integration of 3DGS and
+face reconstruction faces inherent limitations. The discrete nature                       SDF-based NeRF. Specifically, a 3DGS Aggregator extracts and
+of Gaussian primitives makes it difficult to enforce global topologi-                     consolidates multiple Gaussian attributes into a compact feature
+cal consistency, and directly extracted geometries are often prone to                     embedding. The depth map rendered by the Gaussian Splatting
+noise, holes, and fragmented surfaces in textureless or sparsely ob-                      branch is then used to localize an anchor point along each ray, at
+served regions. Furthermore, since 3DGS optimization is primarily                         which the aggregated 3DGS feature is fused with the SDF feature.
+driven by photometric loss, geometric accuracy is not guaranteed.                         This design allows the geometric information encoded in the Gaus-
+Gaussians may adopt arbitrary shapes and orientations that repro-                         sian representation to directly inform and guide the SDF network
+duce appearance faithfully while deviating significantly from the                         during surface querying. However, SplatSDF still exhibits several
+true surface. These limitations motivate the integration of 3DGS                          limitations that leave room for improvement. Although 3DGS nat-
+with implicit representations that offer stronger geometric induc-                        urally supports a decoupled representation of geometric and ap-
+tive biases.                                                                              pearance attributes, SplatSDF employs a monolithic aggregator
+
+© 2026 The Author(s).
+Proceedings published by Eurographics - The European Association for Computer Graphics.
+4 of 12           W. Ding & W. Song & F. Liu / GSNSR: Improving Neural Surface Reconstruction with Geometric and Color Priors from 3DGS
+
+that jointly encodes both into a unified feature embedding, failing         4. Method
+to fully exploit appearance information to guide the optimization
+                                                                            We propose GSNSR, which treats a pretrained 3DGS model as a
+of the color network in the SDF-NeRF architecture. Furthermore,
+                                                                            geometric and photometric prior and uses it in two complemen-
+while using the 3DGS-rendered depth as the anchor point enables
+                                                                            tary ways to guide SDF optimization within the Instant-NSR-PL
+efficient surface localization, it places notable demands on the qual-
+                                                                            [Guo22] framework. The first targets the overall object contour.
+ity of depth estimation, as noise or artifacts in the rendered depth
+                                                                            Because the volume-rendering objective places no constraint on
+map can introduce geometric errors into the reconstruction. Since
+                                                                            unoccupied space, the SDF network tends to accumulate spurious
+the anchor is fixed at the rendered depth position, the fusion process
+                                                                            density in sparsely observed regions and thereby distort the object
+may become sensitive to inaccuracies in the 3DGS depth estimate.
+                                                                            contour. To counter this, we introduce a confidence-aware free-
+                                                                            space loss (Sec. 4.1 and 4.2) that suppresses such density using the
+                                                                            3DGS-rendered pseudo-depth as a soft prior, weighted per pixel by
+3. Preliminaries                                                            a reliability score so that the penalty is enforced only where the
+3.1. 3D implicit neural representation                                      depth can be trusted. At this stage the depth need only indicate, in
+                                                                            coarse terms, that the space in front of the surface is empty, so its
+Given a set of multi-view RGB images with known camera poses,               inaccuracy is tolerable.
+our goal is to reconstruct the high-fidelity 3D scene. The implicit
+                                                                               The second use targets fine geometric and appearance detail, and
+surface S is defined as the zero-level set of the SDF, given by S =
+                                                                            fuses 3DGS features into the SDF network at the architectural level,
+{x ∈ R3 | f (x) = 0}.
+                                                                            following the principle of SplatSDF [LSD∗ 24] rather than coupling
+   To render the scene, we cast a ray r(t) = o + tv from the camera         the two representations through loss terms alone. GSNSR is not a
+center o along the view direction v. We sample N points along the           simple decoupled variant of SplatSDF, and we return to each of
+ray, and for each sample point, the color ci is predicted by the color      the differences below in detail in Sec. 4.3, 4.4 and 4.5. For ag-
+network. The pixel color Ĉ is approximated via volume rendering            gregator design, where SplatSDF encodes all Gaussian attributes
+[MST∗ 20]:                                                                  jointly in a single module, GSNSR adopts a Decoupled Aggregator
+                                                                            that processes geometric and appearance attributes through sepa-
+                      N                  i−1                               rate modules. This design follows the way 3DGS itself separates
+                Ĉ = ∑ Ti αi ci ,   Ti = ∏ 1 − α j ,               (1)
+                     i=1                j=1                                 these two groups of attributes. (Sec.4.3) For anchor localization,
+                                                                            SplatSDF places the anchor at the surface position rendered from
+where Ti denotes the accumulated transmittance and αi is the dis-           3DGS depth, so any error in that depth directly displaces the anchor
+crete opacity of the i-th sample point. Following NeuS [WLL∗ 21],           and injects features at the wrong locations. Anchoring demands a
+to determine the color contribution of each sample xi , the discrete        precise position that the noisy 3DGS depth cannot supply. GSNSR
+opacity αi is computed from SDF values:                                     therefore derives the anchor from the ray-surface intersection im-
+                                                                          plied by a sign change of the SDF along the ray, which severs the
+                          Φs ( f (xi )) − Φs ( f (xi+1 ))                   dependence on Gaussian-rendered depth and lets the anchor grow
+            αi = max                                      ,0 ,   (2)
+                                   Φs ( f (xi ))                            more accurate as the geometry network sharpens during training.
+where f (x) is the signed distance value at point x. Φs (·) is the Sig-     (Sec.4.4) For the fusion stage, SplatSDF overwrites the hash encod-
+moid function, which is parameterized by a learnable parameter s.           ing of the sample nearest the anchor with the aggregated Gaussian
+                                                                            features. GSNSR instead supplies these features through a dedi-
+                                                                            cated auxiliary channel, assigning zero-valued features to samples
+                                                                            far from the surface and weighting the samples that bracket the in-
+3.2. 3D Gaussian Representation                                             tersection by their distance to the anchor, so the sample closer to
+3D Gaussian Splatting (3DGS) [KKLD23] represents a scene as a               the intersection receives a more faithful description of the local ge-
+collection of anisotropic 3D Gaussians {Gk }K                               ometry than a single hard replacement at the nearest point would
+                                               k=1 , where each prim-
+itive is parameterized by a set of learnable attributes: a center posi-     provide. (Sec.4.5) The full framework is illustrated in Fig. 2.
+tion µk ∈ R3 , a full 3D covariance matrix Σk ∈ R3×3 encoding the
+orientation and extent of the Gaussian, an opacity scalar αk ∈ [0, 1],
+                                                                            4.1. 3DGS Depth Confidence Evaluation
+and view-dependent appearance represented by spherical harmonic
+(SH) coefficients. To ensure that Σk remains positive semi-definite         Although 3DGS depth estimates are insufficiently precise to serve
+throughout optimization, it is decomposed as:                               as a hard anchor for feature localization, they remain informative
+                                                                            as a soft spatial prior. We therefore leverage pseudo-depth for free-
+                          Σk = Rk Sk S⊤  ⊤
+                                      k Rk ,                       (3)      space supervision, while mitigating its unreliability through a per-
+                                                                            pixel confidence weighting scheme. We posit that a high-quality
+where Rk is a rotation matrix derived from a learnable quaternion,
+                                                                            3DGS depth observation should satisfy three complementary prop-
+and Sk = diag(sx , sy , sz ) is a diagonal scaling matrix. Novel views
+                                                                            erties: spatial continuity, local consistency, and view-consistent ge-
+are synthesized by projecting the 3D Gaussians onto the image
+                                                                            ometric reliability.
+plane via a differentiable tile-based rasterizer, accumulating color
+contributions in a front-to-back order weighted by the projected               Local Neighborhood Support Score. To assess whether a pixel
+opacity of each Gaussian.                                                   is supported by surrounding valid depth estimates, we compute the
+
+                                                                                                                                                   © 2026 The Author(s).
+                                                                                 Proceedings published by Eurographics - The European Association for Computer Graphics.
+              W. Ding & W. Song & F. Liu / GSNSR: Improving Neural Surface Reconstruction with Geometric and Color Priors from 3DGS                             5 of 12
+
+
+
+                                                                                                 Geo Agg
+                                                   Center                          Geo            feature          SDF              SDF            Surface Mesh
+                                                 Covariance                      Aggregator                       Network
+      Input Images
+                                                                                                                                                  Freespace Loss
+                                    3D
+                                                                                          Distance-based Fusion       feature
+                                  Gaussians
+
+                                               Base Color                         Color                            Color            RGB           Rendered Image
+                                              SH coefficients                    Aggregator                       Network
+                                                                                                 Color Agg
+                                                                                                  feature                                            RGB Loss
+
+
+
+
+Figure 2: Overview of the GSNSR architecture. Our framework integrates 3D Gaussian primitives as a prior with a neural implicit field.
+Decoupled aggregators extract geometric and photometric features from neighboring Gaussians, which are then used to guide the SDF
+network and the color network, respectively. The final image is synthesized via differentiable volume rendering, enabling high-fidelity surface
+reconstruction under robust geometric constraints. The lower panel visualizes the effect of the free-space loss: for sampling points A and
+B, which lie far from the surface, the corresponding weights should remain low to prevent artifacts in empty regions; for the near-surface
+sample C, its weight should be close to the peak value, as it contributes more to the reconstruction.
+
+
+
+ratio of valid pixels r(p) within a k × k local window centered at p.                                View-Dependent Geometric Reliability. Rendered depth maps
+                                                                                                can appear locally smooth yet be geometrically unreliable at
+                                       r(p)
+                   Ssupp (p) = min            ,1 ,                (4)                             grazing-angle pixels, where the surface normal is nearly perpendic-
+                                      rthresh                                                     ular to the viewing ray and depth varies rapidly in image space. We
+where rthresh is the minimum ratio threshold. The confidence is                                   therefore quantify it via the image-space depth gradient magnitude,
+evaluated only for pixels within the foreground mask; all other pix-                              computed by Sobel filtering and normalized by the scene median
+els receive Ssupp (p) = 0.                                                                        depth for scale invariance. The result is further normalized by the
+                                                                                                  95% quantile over valid pixels to yield g̃(p) ∈ [0, 1]. A multiplica-
+   Local Depth Consistency Score. To capture local depth consis-                                  tive penalty exp(−λg · g̃(p)) is then applied to suppress confidence
+tency, we compute the relative standard deviation of depth values                                 at high-gradient regions, with λg controlling the penalty strength.
+within N (p), normalized by the localmean depth
+                                                and clipped by
+                                                        σ   (p)                                      Building on the three properties above, we define the overall con-
+a threshold τσ to yield σ̃rel (p) = min relτσ , 1 . A large σ̃rel in-
+dicates depth discontinuities or noisy estimates. The consistency                                 fidence score C(p) for each pixel p as their product:
+score is then defined as:                                                                                                                                 
+                                                                                                            C(p) = Ssupp (p) · Scons (p) · exp −λg · g̃(p) .        (6)
+                        Scons (p) = [1 − γ · σ̃rel (p)]10 ,                               (5)
+                                                                                                  Ssupp assesses local depth support density, Scons penalizes local
+where [·]10 denotes clamping to the range [0, 1], γ is a global consis-                           depth inconsistency, and the exponential term suppresses unreliable
+tency weight.                                                                                     estimates at grazing-angle observations.
+
+© 2026 The Author(s).
+Proceedings published by Eurographics - The European Association for Computer Graphics.
+6 of 12           W. Ding & W. Song & F. Liu / GSNSR: Improving Neural Surface Reconstruction with Geometric and Color Priors from 3DGS
+
+   As illustrated in Fig. 3 on the DTU scan24 scene, each compo-            where wi j = Ti j αi j is the volume rendering weight of the j-th sam-
+nent of the confidence score captures a distinct and complemen-             ple on the ray, computed from the SDF-induced opacity as in NeuS.
+tary aspect of depth reliability. The support score Ssupp in (b) re-        The confidence-weighted free-space loss is then defined as:
+flects the density of neighboring Gaussian contributions. The con-
+                                                                                                                   ∑i Ĉ(pi ) · mi
+sistency score Scons in (c) remains broadly high across the scene, in-                                  Lfs =                      ,                               (9)
+dicating that the Gaussian depth estimates are locally stable in this                                               ∑i Ĉ(pi )
+scene. The view-dependent geometric reliability term in (d) most            This formulation weights the geometric constraint by depth con-
+clearly demonstrates its intended behavior: in the frontal viewpoint        fidence, focusing the penalty on reliable regions while relaxing it
+(top row), the building facade constitutes a large, nearly planar sur-      where 3DGS depth estimates are uncertain.
+face oriented toward the camera, yielding low depth gradient norms
+and correspondingly high confidence across the highlighted region.
+                                                                            4.3. Decoupled 3DGS Aggregator
+In contrast, in the oblique viewpoint (bottom row), the same fa-
+cade becomes highly foreshortened and presents steep depth gra-             3DGS maintains an explicit separation between geometric param-
+dients, causing the exponential term to assign low confidence to            eters (mean µ, covariance Σ) and appearance attributes (SH coeffi-
+these grazing-angle observations. This view-dependent suppression           cients, opacity α). We mirror this structure in the implicit field by
+is critical for preventing unreliable depth estimates at oblique sur-       introducing two dedicated aggregators that process geometry and
+faces from introducing erroneous geometric supervision into the             appearance along separate pathways.
+free-space loss.
+                                                                               For a selected Gaussian primitive Gi , we apply hash encoding to
+                                                                            its center µi using the same encoding strategy as for sample points.
+                                                                            The encoded position together with the covariance Σi is fed into
+                                                                                                               (i)
+                                                                            the geometry aggregator to yield fgeo . For appearance, we decom-
+                                                                            pose the SH coefficients into a view-independent base color ci and
+                                                                            view-dependent coefficients SHi , which the color aggregator maps
+                                                                                 (i)
+                                                                            to fcol :
+                                                                                                        (i)
+                                                                                                       fgeo = Ageo (h(µi ), Σi ) ,                                (10)
+                                                                                                        (i)
+ (a) Confidence     (b) Support        (c) Consistency   (d) Depth Grad                                fcol     = Acol (ci , SH i ) ,                             (11)
+                        Score               Score             Norm          where h(·) is the hash encoding and Ageo , Acol the two aggre-
+                                                                            gators. Routing the attribute groups to separate networks lets the
+Figure 3: Confidence evaluation on DTU scan24. (a) final confi-
+                                                                            color network receive dedicated view-dependent photometric guid-
+dence; (b) support score; (c) consistency score; (d) depth gradient
+                                                                            ance for faithful appearance modeling, while keeping appearance
+norm. Brighter is more reliable in (a)–(c), whereas brighter means
+                                                                            signals from contaminating the geometric optimization of the SDF
+larger gradient (less reliable) in (d).
+                                                                            network.
+
+
+                                                                            4.4. SDF-Guided Anchor Localization
+4.2. Confidence-aware free-space constraints
+                                                                            The anchor determines where 3DGS features are injected into
+The raw confidence score C(p) is linearly rescaled to [0, 1] by clip-       the implicit field, so it must sit precisely on the surface; an an-
+ping values below clow to zero, where clow is the threshold that            chor displaced from the true surface injects Gaussian features at
+discards highly unreliable depth estimates. Let Ĉ(p) denote this           the wrong location and corrupts the local geometry. The 3DGS-
+rescaled confidence score. For each ray r(t) = o + tv, the pseudo           rendered depth is too unreliable for this purpose, near fine struc-
+depth dˆ rendered from 3DGS provides a surface position estimate            tures and at grazing-angle observations its error is large, so we do
+along the ray. The free-space region F is defined as the interval           not use it to place the anchor. Instead, we localize the anchor from
+from the camera origin up to a position slightly in front of this esti-     the SDF field itself.
+mated surface:
+                                                                               Consider two adjacent sampling points p j and p j+1 along a ray.
+                     F = t t < dˆ − ϵ ,
+                          
+                                                                   (7)      A surface crossing is signaled by a sign change in their SDF val-
+where ϵ is a small safety margin, accounting for inaccuracies in the        ues, f (p j ) · f (p j+1 ) < 0. Within such an interval, we estimate the
+3DGS-rendered depth.                                                        intersection x∗ by linear interpolation of the SDF values:
+                                                                                                              f (p j )p j+1 − f (p j+1 )p j
+   Theoretically, the volume rendering weight accumulated within                                   x∗ =                                     .                     (12)
+F should be zero, since any opacity in this region corresponds to                                                  f (p j ) − f (p j+1 )
+floaters or erroneous geometry ahead of the true surface. For each          Localizing the anchor this way keeps it consistent with the SDF be-
+ray i, we define the free-space mass as the sum of rendering weights        ing optimized, free of any external depth signal that could conflict
+over all samples falling within F:                                          with the network’s own surface prediction. It also lets the anchor
+                         mi =     ∑ wi j ,                            (8)   improve together with the geometry. As the SDF network sharp-
+                                j: ti j ∈F                                  ens during training, the interpolated intersections move closer to
+
+                                                                                                                                                   © 2026 The Author(s).
+                                                                                 Proceedings published by Eurographics - The European Association for Computer Graphics.
+              W. Ding & W. Song & F. Liu / GSNSR: Improving Neural Surface Reconstruction with Geometric and Color Priors from 3DGS                            7 of 12
+
+the true surface, so a better geometry yields a more precise anchor,                             4.6. Losses
+which in turn delivers more faithful 3DGS guidance.
+                                                                                                 The overall training objective is defined as a weighted combination
+                                                                                                 of photometric reconstruction and geometric regularizations:
+4.5. Hybrid Feature Fusion
+                                                                                                       L = Lrgb + λ1 Leik + λ2 Lmask + λ3 Lcurv + λ4 L f s ,     (17)
+We implement the distance-based feature fusion strategy, as illus-
+trated in Fig. 4. We perform a radius-bounded K-Nearest Neighbor                                 where Lrgb denotes the L1 photometric loss between rendered and
+(KNN) search [XXP∗ 22] to retrieve neighboring Gaussian primi-                                   ground-truth pixels, and Leik enforces the Eikonal constraint on the
+tives.                                                                                           SDF gradients. Lmask supervises the accumulated ray opacity Ô(r)
+                           
+                               1
+                                                                                                against the binary foreground mask via binary cross-entropy. Lcurv
+        ω(x∗ , Gi ) = exp − (x∗ − µi )⊤ Σ−1          ∗
+                                             i (x − µi ) ,   (13)                                penalizes the mean absolute Laplacian of the SDF at points sam-
+                               2
+                                                                                                 pled within the scene bounding sphere, encouraging smooth sur-
+                       1
+         Fgeo (x∗ ) =
+                                                     (i)
+                             ∑ ∗ αi · ω(x∗ , Gi ) · fgeo ,   (14)                                face reconstructions, as in [LSD∗ 24]. L f s is the free-space loss.
+                       K G ∈K(x  )                                                               The coefficients λ1 , λ2 , λ3 , and λ4 are hyperparameters balancing
+                                              i
+
+                     ∗  1                            (i)                                         the contribution of each term.
+            Fcol (x ) =      ∑ ∗ αi · ω(x∗ , Gi ) · fcol ,
+                        K G ∈K(x
+                                                                                          (15)
+                                 )            i
+
+where K is the number of contributing neighbors in the search ra-                                5. Experiment
+dius, and αi denotes the opacity of Gi . The spatial weight ω(x∗ , Gi )
+is determined by the anisotropic Gaussian kernel using the Maha-                                 5.1. Experimental settings
+lanobis distance.                                                                                Datasets. Following prior work [LSD∗ 24], we conduct experi-
+   For conciseness, we uniformly denote the aggregated geometry                                  ments on 12 selected scenes from the DTU dataset [JDV∗ 14]. Each
+feature Fgeo (x∗ ) and color feature Fcol (x∗ ) as Fgs (x∗ ). To align                           scene comprises 49 to 64 images captured by a robot-mounted
+this intersection-based feature with the ray sampling points, we dis-                            monocular RGB camera. The dataset features a diverse range of
+tribute Fgs (x∗ ) back to p j and p j+1 using distance-based weight-                             materials and complex geometries. Each scene is evaluated using
+ing. The final injected features are defined as:                                                 the foreground masks as provided in 2DGS [HYC∗ 24]. We addi-
+                                                                                                 tionally evaluate on the NeRF Synthetic dataset [MST∗ 21]. Each
+                       d2                                      d1
+            vj =            Fgs (x∗ ),            v j+1 =           Fgs (x∗ ),            (16)   scene provides 100 training images and 200 test images at a reso-
+                    d1 + d2                                 d1 + d2                              lution of 800 × 800 pixels, rendered from upper-hemisphere view-
+where d1 = |t j − t ∗ | and d2 = |t j+1 − t ∗ | represent the distances                          points with a white background.
+along the ray from the sampling depths t j and t j+1 to the estimated
+                                                                                                    Implementation Details. We adopt a coarse-to-fine multi-
+surface depth t ∗ . This design ensures that the closer a sampling
+                                                                                                 resolution hash encoding [MESK22, LME∗ 23] with 16 levels,
+point is to the potential surface, the stronger the Gaussian prior
+                                                                                                 whose grid resolutions grow geometrically from 25 to 211 and
+guidance it receives. The injected features v j and v j+1 maintain the
+                                                                                                 whose per-level hash table is capped at 222 entries. Each level
+same shape as the full set of ray sampling points and are provided
+                                                                                                 uses 2 features per hash entry, which we found sufficient for our
+as auxiliary inputs to both the geometry and color networks along-
+                                                                                                 object-centric scenes while keeping training cost low. For the pro-
+side the standard hash-encoded features. For all remaining sam-
+                                                                                                 posed Decoupled Aggregators, the output dimensions of geomet-
+pling points that either lack nearby Gaussian primitives within the
+                                                                                                 ric and color features are set to 32 and 64, respectively. Following
+search radius or are not adjacent to any sign-change interval, the
+                                                                                                 SplatSDF [LSD∗ 24], we set the number of neighboring Gaussians
+corresponding injected features are set to zero. This design supplies
+                                                                                                 K = 4 for feature aggregation. A coarse-to-fine optimization strat-
+spatially grounded 3DGS guidance near potential surfaces while
+                                                                                                 egy is adopted to improve convergence stability. To ensure stable
+preserving the continuity of the coordinate-based representation.
+                                                                                                 ray-surface intersection during volume rendering, the aggregators
+                                                                                                 are activated after 10k iterations, by which point the SDF network
+                                                                                                 has established a reliable initial geometry and intersection points
+                                                                View direction
+                                                                                                 can be reliably located. For the pseudo-depth confidence map, the
+                                                                Surface                          neighborhood support threshold is set to rthresh = 0.85 in Eq.4. The
+                                   d2
+                     j        x*        j+1                     Sample points                    consistency weight and relative standard deviation threshold are set
+                         d1
+                                                                Ray-surface intersection         to γ = 0.25 and τσ = 0.03 in Eq.5. The depth gradient penalty is set
+                                                                                                 to λg = 1.0 in Eq.6. The loss weights follow those of the baseline,
+                                                                3D Gaussian
+                                                                                                 with λ1 = 0.1, λ2 = 0.1, λ3 = 0.0005 and λ4 = 0.3. The safety
+                                                                                                 margin ϵ is adaptively configured based on the depth scale of the
+                                                                                                 scene: it is set to 20% of the bounding sphere radius for the DTU
+Figure 4: The Distance-based fusion strategy. At the ray-surface                                 dataset to account for geometric noise, and 10% for the NeRF Syn-
+intersection x∗ , we aggregate features from K nearest Gaussians                                 thetic dataset owing to its more accurate pseudo-depth priors. All
+based on spatial proximity. These features are then propagated to                                experiments are conducted on a single NVIDIA RTX 4090 GPU.
+adjacent sample points p j and p j+1 based on d1 and d2 .                                        The model is trained for 300k iterations, requiring approximately 8
+                                                                                                 hours per scene.
+
+© 2026 The Author(s).
+Proceedings published by Eurographics - The European Association for Computer Graphics.
+8 of 12          W. Ding & W. Song & F. Liu / GSNSR: Improving Neural Surface Reconstruction with Geometric and Color Priors from 3DGS
+
+
+Table 1: Quantitative Comparisons on the DTU Dataset. (Chamfer distance, CD ↓). Pink and yellow denote the best and second-best
+results. Our method achieves the best overall performance among all baseline geometric reconstruction methods.
+                  Scan          24            37         40         55     63         65         69          83         105         106         110          114        Mean
+            Instant-NSR-PL     2.86          2.81       2.09       0.81   1.65       1.39       1.47        1.67        1.12        1.22         2.3         0.98        1.7
+                  NeuS           1           1.37       0.93       0.43    1.1       0.65       0.57        1.48        0.83        0.52         1.2         0.35       0.87
+ SDF-            NeuS2         0.56          0.76       0.49       0.37   0.92       0.71       0.76        1.22        0.63        0.59        0.89          0.4       0.69
+ based         Geo-NeuS        0.46          0.85       0.38       0.43   0.89        0.5        0.5        1.26        0.66        0.52        0.82         0.31       0.63
+Methods      Neuralangelo      0.37          0.72       0.35       0.35   0.87       0.54       0.53        1.29        0.73        0.47        0.74         0.32       0.61
+               SplatSDF        0.35          0.67       0.32       0.31   0.84       0.54       0.55        1.16        0.65        0.47        0.75         0.31       0.58
+                  Ours         0.42          0.67       0.31       0.37   0.71       0.54       0.53        1.05        0.55        0.49        0.59         0.38       0.55
+                 SuGaR         1.47          1.33       1.13       0.61   2.25       1.71       1.15        1.63        1.07        0.79        2.45         0.98       1.38
+3DGS-
+            GaussianSurfels    0.66          0.93       0.54       0.41   1.06       1.14       0.85        1.29        0.79        0.82        1.58         0.45       0.88
+ based
+                 2DGS          0.48          0.91       0.39       0.39   1.01       0.83       0.81        1.36        0.76         0.7         1.4          0.4       0.79
+Methods
+               MVS-GS          0.43          0.79       0.33       0.35   0.91       0.67       0.55        1.28        0.61        0.56        0.77         0.35       0.63
+                 GSDF          0.59          0.94       0.46       0.38    1.3       0.77       0.73        1.59        0.76        0.59        1.22         0.38       0.81
+Hybrid
+                3DGSR          0.68          0.84        0.7       0.39   1.16       0.87       0.77        1.48        0.87        0.69         0.8         0.42       0.81
+Methods
+                GS-Pull        0.51          0.56       0.46       0.39   0.82       0.67       0.85        1.37        0.73        0.54        1.39         0.35       0.72
+
+
+Table 2: Quantitative Comparisons on the DTU Dataset.(PSNR ↑) Pink and yellow denote the best and second-best results. Our method
+demonstrates superior rendering quality, yielding the best results in half of the tested scenes and achieving the second-best overall perfor-
+mance in terms of average PSNR.
+      Scan        24       37          40        55         63         65         69         83         105         106         110         114         Mean           Time
+Instant-NSR-PL   23.86    24.97       25.3      25.43      29.52      26.17      22.93      26.72      27.71       23.12       25.44        26.7        25.66       8.5min (30k)
+    NeuS2        28.44    27.14       29.7      29.67      31.75      27.83      24.84      31.24      30.57       26.05       28.93       28.98        28.76         5min(15k)
+    NeuS         26.62    23.64    26.43        25.59      30.61      32.83      29.24      33.71      31.97       32.18       28.92       28.41        29.18              8h
+  SplatSDF       29.63    30.39    29.75        28.44      31.24      28.74       29        29.61      29.41       28.83       29.45       28.68        29.43             12h
+ Neuralangelo    30.64    27.78     32.7        34.18      35.15      35.89      31.47      36.82      35.92       36.61        32.6        31.2        33.41             14h
+    Ours         33.37    32.05     33.8        34.89       35.3       31        29.64      33.39      32.78       27.21       30.12       32.71        32.19              8h
+
+
+
+5.2. Comparisons                                                                    mean PSNR (33.41 dB), it requires roughly 14 hours of training; by
+                                                                                    contrast, our method reaches comparable quality in only 8 hours,
+Quantitative Evaluation. We select Instant-NSR-PL [Guo22], a                        reducing training time by 33% relative to SplatSDF. Overall, these
+PyTorch-Lightning implementation that provides object-level DTU                     results indicate that our method offers a favorable trade-off between
+results, as our primary baseline for its remarkable efficiency. It                  rendering fidelity and training efficiency, outperforming most base-
+is distinct from the original Instant-NSR [ZJY∗ 22], which tar-                     lines under comparable or shorter training budgets.
+gets human-performance capture and does not evaluate on DTU.
+To demonstrate the efficacy of our approach, we conduct a com-
+prehensive comparison against several state-of-the-art methods,                        Qualitative Evaluation. Fig. 5 presents qualitative comparisons
+including SDF-based methods (Instant-NSR-PL [Guo22], NeuS                           on the DTU dataset. Across diverse object types, GSNSR con-
+[WLL∗ 21], NeuS2 [WHH∗ 23], Geo-NeuS [FXOT22], Neuralan-                            sistently produces clean and detail-rich reconstructions. For scan
+gelo [LME∗ 23], SplatSDF [LSD∗ 24]) and 3DGS-based methods                          24, GSNSR recovers sharper window structures but shows slight
+(SuGaR [GL24], GaussianSurfels [DXX∗ 24], 2DGS [HYC∗ 24],                           concavities in the shadowed region. Our confidence mechanism
+MVS-GS [KPL25]). The quantitative results of Instant-NSR-PL                         correctly flags this region as unreliable and relaxes the free-space
+are directly cited from NeuS2. The experimental results in Table                    constraint accordingly. However, soft confidence weighting atten-
+1 demonstrate that our method achieves highly competitive per-                      uates rather than fully removes the influence of an entirely erro-
+formance across the majority of scenarios, with substantial gains                   neous 3DGS depth prior, leaving a slight inward bias that meth-
+observed in scan63, scan83 and scan110. Our approach effectively                    ods without a free-space term do not exhibit. We regard this as
+captures intricate object details while maintaining overall geomet-                 an acceptable trade-off given the accuracy gains GSNSR achieves
+ric integrity.                                                                      elsewhere. For scan 65, the nasal-cavity region suffers from se-
+                                                                                    vere photometric ambiguity due to insufficient lighting. GSNSR
+   Table 2 reports a quantitative comparison of PSNR and train-                     and Neuralangelo reconstruct a well-defined, artifact-free surface
+ing time across methods on the DTU dataset. Our method attains                      in this region, whereas 2DGS and SplatSDF exhibit pronounced
+the highest PSNR on scans 24, 37, 40, 55, 63 and 114 and ranks                      surface noise and missing geometry in the highlighted area. Within
+second overall, with a mean PSNR of 32.19 dB, indicating com-                       the eye socket, GSNSR recovers the original cavity structure, while
+petitive rendering quality. Although Neuralangelo achieves the best                 the other methods all produce artifacts there. For scan 83, the doll’s
+
+                                                                                                                                                           © 2026 The Author(s).
+                                                                                         Proceedings published by Eurographics - The European Association for Computer Graphics.
+              W. Ding & W. Song & F. Liu / GSNSR: Improving Neural Surface Reconstruction with Geometric and Color Priors from 3DGS                         9 of 12
+
+
+scan
+ 24
+
+
+
+
+scan
+ 65
+
+
+
+scan
+ 83
+
+
+
+scan
+110
+
+
+                  Ground Truth                                2DGS                        Neuralangelo              SplatSDF                    GSNSR
+
+                                                           Figure 5: Qualitative comparison on the DTU dataset.
+
+
+
+beard represents high-frequency geometric detail. GSNSR shows                                  remain identical to GSNSR. Finally, the full GSNSR model incor-
+a clear advantage in recovering such fine structures, producing                                porates the free-space loss, employs the decoupled aggregator, uses
+more complete and detailed beard geometry, whereas Neuralan-                                   ray-surface intersection points as anchors for surface localization,
+gelo and SplatSDF yield overly smoothed results and 2DGS ex-                                   and adopts distance-based weighting for fusion. The results reveal
+hibits fragmented surfaces. For scan 110, GSNSR restores sharp                                 the contribution of each proposed component, with the full model
+object boundaries and smooth surface contours, while 2DGS pro-                                 achieving the best Chamfer distance across all scenes.
+duces rougher surface detail and both Neuralangelo and SplatSDF
+                                                                                                  As shown in Fig. 6, for scan63, the scene consists of several
+show concavities in the torso region.
+                                                                                               smooth, closely arranged fruits. The depression becomes progres-
+                                                                                               sively smaller from the SplatSDF-style variant through the w/o
+5.3. Ablation Study                                                                            free-space and w/o decouple variants, and GSNSR produces the
+To validate the contribution of each proposed component, we con-                               most complete surface, smoothly closing the concavity and recov-
+duct an ablation study with four configurations. Table 3 presents the                          ering a contour closest to the ground truth. The SplatSDF-style
+quantitative ablation results on the scan63, Lego and Mic scenes.                              variant anchors feature aggregation at the 3DGS-rendered depth
+For each variant, we report Chamfer distance and PSNR. This al-                                and directly replaces the feature, so geometric guidance is injected
+lows us to track how each component affects both geometric accu-                               at an inaccurate location and biases the SDF zero-level set inward,
+racy and rendering quality.                                                                    producing the most pronounced depression. By relocating the an-
+                                                                                               chor to the SDF-predicted ray-surface intersection and distribut-
+   Our experiments use Instant-NSR-PL [Guo22] as the baseline.
+                                                                                               ing the aggregated feature to neighboring samples by distance, our
+The SplatSDF-style variant retains the free-space loss but other-
+                                                                                               fusion strategy preserves surface continuity, substantially reducing
+wise follows the fusion design of SplatSDF. It adopts the same ag-
+                                                                                               the depression. The decoupled aggregator further prevents appear-
+gregator as SplatSDF and takes the 3DGS-rendered depth as the
+                                                                                               ance cues from leaking into the geometry branch. This produces
+anchor point for surface localization. The 3DGS feature is still in-
+                                                                                               the most complete and smooth surface.
+jected as an auxiliary input aligned with the ray samples. We place
+the aggregated feature directly at the position of the surface sample                             For Lego, which contains intricate mechanical structures with
+point and set all other positions to zero, instead of distributing it to                       thin, repetitive geometry, the SplatSDF-style variant produces clear
+neighboring samples by distance. The w/o free-space variant shares                             geometric errors on the wheels and treads and yields the lowest
+the same aggregator design as GSNSR and differs only in omit-                                  PSNR. Anchoring at the unreliable 3DGS depth and directly re-
+ting the free-space loss. The w/o decouple variant uses the same                               placing the feature there injects corrupted geometric guidance in
+aggregator as the SplatSDF-style variant, while all other modules                              these regions, degrading both geometry and rendering. The w/o
+
+© 2026 The Author(s).
+Proceedings published by Eurographics - The European Association for Computer Graphics.
+10 of 12          W. Ding & W. Song & F. Liu / GSNSR: Improving Neural Surface Reconstruction with Geometric and Color Priors from 3DGS
+
+
+
+
+scan
+ 63
+
+
+
+Lego
+
+
+
+
+Mic
+
+
+
+           Ground Truth               SplatSDF-style               w/o free-space                   w/o decouple                              GSNSR
+
+                      Figure 6: Ablation study on the impact of the proposed components on scan63, ’Lego’ and ’Mic’.
+
+
+Table 3: Ablation results on scan63, ’Lego’ and ’Mic’. Pink and yellow denote the best and second-best results. GSNSR achieves the best
+Chamfer distance across all three scenes.
+                     free-space                       anchor                                   scan63                          Lego                         Mic
+     Variant                        aggregator                            fusion
+                        loss                           points                              CD↓     PSNR↑               CD↓        PSNR↑             CD↓       PSNR↑
+                         √
+ SplatSDF-style                        couple       3DGS depth           replace           0.73     35.27              1.1         32.56            0.77       30.25
+ w/o free-space           ×           decouple      intersection     distance-based        0.72     35.35              1.34        35.54            0.56       35.18
+                          √
+  w/o decouple                         couple       intersection     distance-based        0.72     35.19              1.08        35.12             0.5       35.39
+                          √
+    GSNSR                             decouple      intersection     distance-based        0.71      35.3              1.07        35.24            0.48       35.45
+
+
+free-space variant recovers a more complete overall shape but in-            cause the SplatSDF-style variant ties both the anchor localization
+troduces floater artifacts, most evident beneath the chassis. These          and the free-space supervision to this same unreliable signal, the
+floaters help fit the photometric signal and give it the highest PSNR,       resulting errors become mutually reinforcing, and this compound-
+yet they corrupt the geometry and result in the worst Chamfer dis-           ing effect drives the observed collapse. The w/o free-space vari-
+tance, showing how the absence of the free-space loss trades ge-             ant recovers a more complete overall shape but fails to reconstruct
+ometric accuracy for appearance fitting. With the free-space loss            the open lattice, as spurious density fills the cavities that should
+reintroduced, the w/o decouple variant suppresses these floaters,            remain hollow. With the free-space loss reintroduced, the w/o de-
+leaving only minor depressions in fine details. Its PSNR nonethe-            couple variant suppresses this cavity-filling and produces a more
+less remains lower than that of GSNSR, isolating the benefit of the          complete surface, leaving only minor depressions in fine details.
+decoupled aggregator, which provides the color network with ded-             As in Lego, its PSNR remains lower than that of GSNSR, isolating
+icated photometric guidance. GSNSR achieves the best Chamfer                 the benefit of the decoupled aggregator. GSNSR achieves the best
+distance and the cleanest reconstruction, recovering the mechani-            Chamfer distance and the best PSNR, cleanly recovering the fine
+cal details while keeping the surface free of floaters.                      open lattice while suppressing spurious volume.
+
+   For Mic, which features high-frequency lattice structures with
+                                                                             5.4. Limitation and Future Works
+open cavities, the SplatSDF-style variant produces severe geomet-
+ric errors on the microphone head, causing this structure to col-            Although we introduce a confidence-aware mechanism to evalu-
+lapse almost entirely and yielding the worst Chamfer distance and            ate the reliability of Gaussian depth, our framework consumes this
+PSNR. This failure originates from an uncritical reliance on the             depth as a soft prior and does not correct it. The confidence weight-
+3DGS depth. When erroneous anchor placement injects the ag-                  ing down-weights unreliable depth wherever its failure is detectable
+gregated features at incorrect spatial locations, they conflict with         from local support, local stability, or viewing geometry, yet it can
+the hash encoding and destabilize the geometry network’s inter-              only attenuate the influence of an erroneous prior. Where the Gaus-
+nal representations. Critically, the free-space loss also relies on the      sian depth is severely wrong, the residual free-space constraint still
+3DGS depth to define the unoccupied region along each ray. Be-               leaves a slight geometric bias that weighting alone cannot fully re-
+
+                                                                                                                                                     © 2026 The Author(s).
+                                                                                   Proceedings published by Eurographics - The European Association for Computer Graphics.
+             W. Ding & W. Song & F. Liu / GSNSR: Improving Neural Surface Reconstruction with Geometric and Color Priors from 3DGS                            11 of 12
+
+move. The method therefore also struggles on scenes with exces-                           suppresses spurious floaters and density in unoccupied regions, di-
+sive noise, where low-confidence depth priors may insufficiently                          rectly optimizing the overall object boundaries. To recover fine geo-
+suppress geometric artifacts. Our current framework builds upon                           metric and appearance details, we propose a novel feature injection
+vanilla 3DGS, whose geometric accuracy is inherently limited.                             strategy that departs from unreliable 3DGS-rendered depth and lo-
+As illustrated in Fig. 7, Gaussians reconstructed on DTU scenes                           calizes the feature-injection anchor at the ray-surface intersection
+exhibit a notable proportion of floaters detached from the actual                         predicted by the SDF network itself. Building upon this anchor, a
+surface, whereas those on NeRF Synthetic scenes conform more                              decoupled aggregation mechanism separates geometric and appear-
+tightly to the object geometry. This discrepancy directly affects the                     ance attributes from neighboring Gaussians and propagates them
+reliability of the pseudo-depth priors used in our free-space loss,                       to the intersecting samples via distance-based weighting. Exten-
+and partially explains the relatively weaker artifact suppression ob-                     sive experiments on the DTU and NeRF Synthetic datasets demon-
+served on DTU. We believe that integrating more geometrically                             strate that GSNSR achieves competitive reconstruction accuracy
+faithful Gaussian representations would substantially benefit our                         with significantly richer geometric details and fewer artifacts across
+pipeline.                                                                                 challenging scenes.
+   Our method exhibits suboptimal reconstruction quality on large-
+scale, unbounded scenes such as those in the Tanks and Temples                            Acknowledgments
+dataset. We attribute this primarily to the limited representational
+                                                                                          This work is partly supported by National Natural Sci-
+capacity of our current network architecture, which was originally
+                                                                                          ence Foundation of China (No.62307025), Jiangsu Provin-
+designed and optimized for object-centric, bounded scenes. In such
+                                                                                          cial Graduate Student Research Innovation Program (No.
+settings, the MLP-based SDF network can adequately cover the
+                                                                                          KYCX23_1025).
+scene’s geometric complexity within a compact volume. However,
+unbounded outdoor scenes introduce significantly greater spatial
+extent, depth range ambiguity, and viewpoint diversity, which col-                        References
+lectively exceed the expressive capacity of the current network.                          [BMT∗ 21] BARRON J. T., M ILDENHALL B., TANCIK M., H EDMAN P.,
+The fixed network size struggles to simultaneously capture both                             M ARTIN -B RUALLA R., S RINIVASAN P. P.: Mip-nerf: A multiscale rep-
+fine-grained local surface details and the global geometric layout                          resentation for anti-aliasing neural radiance fields. In Proceedings of the
+of large scenes, leading to incomplete or inaccurate reconstructions                        IEEE/CVF International Conference on Computer Vision (ICCV) (Octo-
+                                                                                            ber 2021), pp. 5855–5864. 2
+in distant regions. We hope that future work will explore scene con-
+traction strategies, spatial partitioning, or hierarchical network de-                    [CLWL25] C HEN H., L I C., WANG Y., L EE G. H.: Neusg: Neural im-
+                                                                                            plicit surface reconstruction with 3d gaussian splatting guidance, 2025.
+signs to scale the model’s representational capacity to unbounded                           arXiv:2312.00846. 3
+environments, enabling more accurate SDF learning across the full
+                                                                                          [CW24] C HEN G., WANG W.: A survey on 3d gaussian splatting. ACM
+scene extent.                                                                               Computing Surveys (2024). 3
+                                                                                          [DXX∗ 24] DAI P., X U J., X IE W., L IU X., WANG H., X U W.: High-
+                                                                                            quality surface reconstruction using gaussian surfels. In ACM SIG-
+                                                                                            GRAPH 2024 conference papers (2024), pp. 1–11. 8
+                                                                                          [FXOT22] F U Q., X U Q., O NG Y. S., TAO W.: Geo-neus: Geometry-
+                                                                                            consistent neural implicit surfaces learning for multi-view reconstruc-
+                                                                                            tion. Advances in Neural Information Processing Systems 35 (2022),
+                                                                                            3403–3416. 8
+                                                                                          [GL24] G UÉDON A., L EPETIT V.: Sugar: Surface-aligned gaussian
+                                                                                            splatting for efficient 3d mesh reconstruction and high-quality mesh ren-
+                                                                                            dering. CVPR (2024). 3, 8
+                                                                                          [Guo22] G UO Y.-C.:       Instant neural surface reconstruction, 2022.
+                 (a) Lego                                  (b) scan24                       https://github.com/bennyguo/instant-nsr-pl. 4, 8, 9
+                                                                                          [HYC∗ 24] H UANG B., Y U Z., C HEN A., G EIGER A., G AO S.: 2d gaus-
+                                                                                            sian splatting for geometrically accurate radiance fields. In SIGGRAPH
+               Figure 7: Limitation conditions and results.                                 2024 Conference Papers (2024), Association for Computing Machinery.
+                                                                                            doi:10.1145/3641519.3657428. 3, 7, 8
+                                                                                          [JDV∗ 14] J ENSEN R., DAHL A., VOGIATZIS G., T OLA E., A ANÆS H.:
+                                                                                             Large scale multi-view stereopsis evaluation. In 2014 IEEE Conference
+                                                                                             on Computer Vision and Pattern Recognition (2014), IEEE, pp. 406–413.
+6. Conclusion                                                                                7
+                                                                                          [KKLD23] K ERBL B., KOPANAS G., L EIMKÜHLER T., D RETTAKIS G.:
+In this paper, we present GSNSR, a hybrid neural surface re-                                3d gaussian splatting for real-time radiance field rendering. ACM Trans-
+construction framework that harnesses 3DGS as a geometric and                               actions on Graphics 42, 4 (July 2023). 2, 3, 4
+photometric prior to guide neural SDF optimization. To address                            [KPL25] K IM J., PARK G., L EE S.: Multiview Geometric Regularization
+geometric artifacts and refine object contours, we introduce a                              of Gaussian Splatting for Accurate Radiance Fields. Computer Graphics
+confidence-aware free-space loss that leverages 3DGS-rendered                               Forum (2025). doi:10.1111/cgf.70179. 8
+pseudo depth. By converting this pseudo depth into an explicit free-                      [LME∗ 23] L I Z., M ÜLLER T., E VANS A., TAYLOR R. H., U NBERATH
+space prior weighted by per-pixel reliability, this loss effectively                        M., L IU M.-Y., L IN C.-H.: Neuralangelo: High-fidelity neural surface
+
+© 2026 The Author(s).
+Proceedings published by Eurographics - The European Association for Computer Graphics.
+12 of 12            W. Ding & W. Song & F. Liu / GSNSR: Improving Neural Surface Reconstruction with Geometric and Color Priors from 3DGS
+
+  reconstruction. In IEEE Conference on Computer Vision and Pattern
+  Recognition (CVPR) (2023). 3, 7, 8
+[LSD∗ 24] L I R. B., S UZUKI K., D U B., L E K. M. B., ATANASOV N.,
+  N GUYEN T.: Splatsdf: Boosting neural implicit sdf via gaussian splatting
+  fusion, 2024. arXiv:2411.15468. 3, 4, 7, 8
+[LSH∗ 24] LYU X., S UN Y.-T., H UANG Y.-H., W U X., YANG Z., C HEN
+  Y., PANG J., Q I X.: 3dgsr: Implicit surface reconstruction with 3d gaus-
+  sian splatting. ACM Transactions on Graphics 43, 6 (Nov. 2024), 1–12.
+  doi:10.1145/3687952. 2
+[MESK22] M ÜLLER T., E VANS A., S CHIED C., K ELLER A.: In-
+  stant neural graphics primitives with a multiresolution hash encoding.
+  ACM Trans. Graph. 41, 4 (July 2022), 102:1–102:15. doi:10.1145/
+  3528223.3530127. 2, 7
+[MST∗ 20] M ILDENHALL B., S RINIVASAN P. P., TANCIK M., BARRON
+  J. T., R AMAMOORTHI R., N G R.: Nerf: Representing scenes as neural
+  radiance fields for view synthesis. In ECCV (2020). 2, 4
+[MST∗ 21] M ILDENHALL B., S RINIVASAN P. P., TANCIK M., BARRON
+  J. T., R AMAMOORTHI R., N G R.: Nerf: Representing scenes as neural
+  radiance fields for view synthesis. Communications of the ACM 65, 1
+  (2021), 99–106. 7
+[WHH∗ 23] WANG Y., H AN Q., H ABERMANN M., DANIILIDIS K.,
+  T HEOBALT C., L IU L.: Neus2: Fast learning of neural implicit sur-
+  faces for multi-view reconstruction. In Proceedings of the IEEE/CVF
+  International Conference on Computer Vision (ICCV) (2023). 3, 8
+[WLL∗ 21] WANG P., L IU L., L IU Y., T HEOBALT C., KOMURA T.,
+  WANG W.: Neus: Learning neural implicit surfaces by volume rendering
+  for multi-view reconstruction. In Advances in Neural Information Pro-
+  cessing Systems (2021), Ranzato M., Beygelzimer A., Dauphin Y., Liang
+  P., Vaughan J. W., (Eds.), vol. 34, Curran Associates, Inc., pp. 27171–
+  27183. 2, 3, 4, 8
+[WYZ∗ 24] W U T., Y UAN Y.-J., Z HANG L.-X., YANG J., C AO Y.-P.,
+  YAN L.-Q., G AO L.: Recent advances in 3d gaussian splatting. Compu-
+  tational Visual Media 10, 4 (2024), 613–642. 3
+[XLC∗ 25] X IANG H., L I X., C HENG K., L AI X., Z HANG W., L IAO
+  Z., Z ENG L., L IU X.: Gaussianroom: Improving 3d gaussian splat-
+  ting with sdf guidance and monocular cues for indoor scene reconstruc-
+  tion. In 2025 IEEE International Conference on Robotics and Automa-
+  tion (ICRA) (2025), IEEE, pp. 2686–2693. 3
+[XXP∗ 22] X U Q., X U Z., P HILIP J., B I S., S HU Z., S UNKAVALLI K.,
+  N EUMANN U.: Point-nerf: Point-based neural radiance fields. In Pro-
+  ceedings of the IEEE/CVF Conference on Computer Vision and Pattern
+  Recognition (2022), pp. 5438–5448. 7
+[YGKL21] YARIV L., G U J., K ASTEN Y., L IPMAN Y.: Volume render-
+  ing of neural implicit surfaces. Advances in neural information process-
+  ing systems 34 (2021), 4805–4815. 3
+[YLX∗ 24] Y U M., L U T., X U L., J IANG L., X IANGLI Y., DAI B.: Gsdf:
+  3dgs meets sdf for improved neural rendering and reconstruction. Ad-
+  vances in Neural Information Processing Systems 37 (2024), 129507–
+  129530. 2, 3
+[YSG24] Y U Z., S ATTLER T., G EIGER A.: Gaussian opacity fields: Effi-
+  cient adaptive surface reconstruction in unbounded scenes. ACM Trans-
+  actions on Graphics (ToG) 43, 6 (2024), 1–13. 3
+[ZJY∗ 22] Z HAO F., J IANG Y., YAO K., Z HANG J., WANG L., DAI H.,
+   Z HONG Y., Z HANG Y., W U M., X U L., Y U J.: Human performance
+   modeling and rendering via neural animated mesh. ACM Trans. Graph.
+   41, 6 (nov 2022). doi:10.1145/3550454.3555451. 3, 8
+[ZLH24] Z HANG W., L IU Y.-S., H AN Z.: Neural signed distance func-
+  tion inference through splatting 3d gaussians pulled on zero-level set. In
+  Advances in Neural Information Processing Systems (2024). 3
+
+
+
+
+                                                                                                                                                    © 2026 The Author(s).
+                                                                                  Proceedings published by Eurographics - The European Association for Computer Graphics.
+
