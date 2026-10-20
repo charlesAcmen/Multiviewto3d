@@ -1,0 +1,21 @@
+{
+  "view_ids": [
+    0,
+    2,
+    4,
+    6,
+    8,
+    10,
+    12,
+    14,
+    16,
+    18
+  ],
+  "data": "D:\\repos\\Multiviewto3d\\experiments\\gap_representability\\data\\textured_fork_v2",
+  "inputs": [
+    "rgb/*.png",
+    "mask/*.png",
+    "cameras.npz"
+  ],
+  "no_ground_truth_geometry_read": true
+}

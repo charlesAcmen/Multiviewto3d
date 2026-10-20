@@ -1,0 +1,3 @@
+split,surface_count,surface_sdf_abs_median,surface_sdf_abs_p95,free_gt_occupied_fraction,inside_probe_gt_outside_fraction
+train,160,0.0007596255654160611,0.0025022963443990403,0.0,0.0
+development_validation,160,0.0007166156532224244,0.002712194680556128,0.0,0.0

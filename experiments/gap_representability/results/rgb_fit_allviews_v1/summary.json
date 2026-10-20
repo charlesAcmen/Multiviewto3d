@@ -1,0 +1,37 @@
+{
+  "evidence": "D:\\repos\\Multiviewto3d\\experiments\\gap_representability\\results\\rgb_frontend_v1\\evidence.npz",
+  "elapsed_seconds": 3.508896100000129,
+  "diagnostics": [
+    {
+      "nodes": 8,
+      "n": 2,
+      "eta": 3.000000000000066,
+      "lp_seconds": 0.010859699992579408,
+      "qp_status": "solved",
+      "qp_seconds": 0.00125,
+      "verified_eta": 3.0000001230568722
+    },
+    {
+      "nodes": 27,
+      "n": 3,
+      "eta": 0.18935437106838682,
+      "lp_seconds": 0.014921499998308718,
+      "qp_status": "maximum iterations reached",
+      "qp_seconds": 0.0,
+      "verified_eta": null
+    },
+    {
+      "nodes": 125,
+      "n": 5,
+      "eta": 0.12123777240293111,
+      "lp_seconds": 0.02151459999731742,
+      "qp_status": "maximum iterations reached",
+      "qp_seconds": 0.0,
+      "verified_eta": null
+    }
+  ],
+  "status": "partial_qp_failure",
+  "osqp": "1.1.3",
+  "known_scaffold_for_display": true,
+  "no_gt_geometry_used_for_fit": true
+}

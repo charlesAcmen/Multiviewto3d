@@ -1,0 +1,3 @@
+- 0.94s: Extracted SIFT from 20 RGB images, total features 64464.
+- 3.34s: Triangulated 85712 RGB matches; no GT depth/normals/correspondences read.
+- 3.43s: Built image-derived evidence: 160 surface normals, 250 FREE points, 160 inferred inward probes.

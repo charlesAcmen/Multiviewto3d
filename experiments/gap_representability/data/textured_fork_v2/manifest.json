@@ -1,0 +1,10 @@
+{
+  "views": 20,
+  "resolution": 512,
+  "elapsed_seconds": 2.762637799998629,
+  "coordinate_frame": "fixed object [0,1]^3",
+  "input_assumptions": "GT pinhole cameras and GT target masks; static textured opaque analytic object",
+  "no_depth_saved": true,
+  "random_seed": 20261020,
+  "cv2": "5.0.0"
+}

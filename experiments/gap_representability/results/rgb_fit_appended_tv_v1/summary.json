@@ -1,0 +1,38 @@
+{
+  "evidence": "D:\\repos\\Multiviewto3d\\experiments\\gap_representability\\results\\rgb_appended_v1\\evidence.npz",
+  "elapsed_seconds": 1.8209036000043852,
+  "diagnostics": [
+    {
+      "nodes": 8,
+      "n": 2,
+      "eta": 3.0,
+      "lp_seconds": 0.02018310000130441,
+      "qp_status": "TV LP solved",
+      "qp_seconds": 0.015571099997032434,
+      "verified_eta": 3.000000012447643
+    },
+    {
+      "nodes": 27,
+      "n": 3,
+      "eta": 0.2561240971816448,
+      "lp_seconds": 0.023642000000108965,
+      "qp_status": "TV LP solved",
+      "qp_seconds": 0.02652890000899788,
+      "verified_eta": 0.2561241071816528
+    },
+    {
+      "nodes": 125,
+      "n": 5,
+      "eta": 0.19629343356267848,
+      "lp_seconds": 0.04923109999799635,
+      "qp_status": "TV LP solved",
+      "qp_seconds": 0.13964340000529774,
+      "verified_eta": 0.1962934435626991
+    }
+  ],
+  "status": "completed",
+  "fit_method": "tv",
+  "osqp": "1.1.3",
+  "known_scaffold_for_display": true,
+  "no_gt_geometry_used_for_fit": true
+}

@@ -1,0 +1,20 @@
+{
+  "status": "evidence_complete",
+  "view_ids": [
+    0,
+    2,
+    4,
+    6,
+    8,
+    10,
+    12,
+    14,
+    16,
+    18
+  ],
+  "triangulated_matches": 16917,
+  "unique_points": 7664,
+  "surface_count": 160,
+  "free_count": 250,
+  "elapsed_seconds": 1.170056500006467
+}

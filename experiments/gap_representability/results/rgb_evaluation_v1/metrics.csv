@@ -1,0 +1,4 @@
+method,nodes,development_max_eta,development_p95_eta,development_free_occupied_fraction,gap_roi_occupied_fraction,solid_probe_recall,notch_straight_path_fraction
+nodes_8,8,3.0000001014575295,3.0000000570499203,1.0,1.0,1.0,0.0
+nodes_27,27,5.995032716568602,3.8695284473942566,0.0,0.0,0.9674548788726957,1.0
+nodes_125,125,5.640960901351432,4.609363610925497,0.0,0.0,0.954068140140913,1.0

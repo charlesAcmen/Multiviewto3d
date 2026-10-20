@@ -1,0 +1,20 @@
+{
+  "sources": [
+    {
+      "path": "D:\\repos\\Multiviewto3d\\experiments\\gap_representability\\results\\rgb_train_even_v1\\evidence.npz",
+      "sha256": "a3969f7dd5c5de069288b06bf504a489a4f21adc94c9ed2db61064491736c91d"
+    },
+    {
+      "path": "D:\\repos\\Multiviewto3d\\experiments\\gap_representability\\results\\rgb_validation_odd_v1\\evidence.npz",
+      "sha256": "0447b13d59aac8cc10be2ab1c98666220ba1f28887c3e6d7413519ac1801de32"
+    }
+  ],
+  "first_samples_retained": true,
+  "counts": {
+    "surface": 320,
+    "normals": 320,
+    "free": 500,
+    "inside": 320
+  },
+  "new_observations_are_no_longer_holdout": true
+}

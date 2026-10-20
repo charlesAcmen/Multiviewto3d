@@ -1,0 +1,65 @@
+{
+  "evidence_level": "CPU manufactured Oracle mechanism experiment; not RGB reconstruction",
+  "diagnostic_cases": 48,
+  "seeds": 12,
+  "total_seconds": 6.546252300002379,
+  "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+  "platform": "Windows-10-10.0.19045-SP0",
+  "numpy": "2.5.4",
+  "scipy": "1.18.1",
+  "process_rss_bytes": 263602176,
+  "peak_working_set_bytes": 284434432,
+  "gpu_snapshot_NOT_peak": "name, memory.total [MiB], memory.used [MiB]\nNVIDIA GeForce RTX 3060, 12288 MiB, 1173 MiB",
+  "gpu_used_by_experiment": false,
+  "torch_allocated": null,
+  "torch_reserved": null,
+  "geometry": [
+    {
+      "method": "ground_truth",
+      "gap_occupied_fraction": 0.0,
+      "solid_probe_recall": 1.0,
+      "vertices": 30274,
+      "faces": 60544,
+      "extraction_resolution": 81,
+      "learned_nodes": 0
+    },
+    {
+      "method": "coarse",
+      "gap_occupied_fraction": 1.0,
+      "solid_probe_recall": 1.0,
+      "vertices": 26074,
+      "faces": 52144,
+      "extraction_resolution": 81,
+      "learned_nodes": 8
+    },
+    {
+      "method": "refined",
+      "gap_occupied_fraction": 0.03489845122798414,
+      "solid_probe_recall": 1.0,
+      "vertices": 31996,
+      "faces": 63992,
+      "extraction_resolution": 81,
+      "learned_nodes": 27
+    },
+    {
+      "method": "air_only",
+      "gap_occupied_fraction": 0.0,
+      "solid_probe_recall": 0.0,
+      "vertices": 12774,
+      "faces": 25544,
+      "extraction_resolution": 81,
+      "learned_nodes": 0
+    }
+  ],
+  "source_sha256": "f6d150cc38e6ac86ce64e3e23e6e0ffd3a865f740c3dae3c163eaecbfbe84b62",
+  "limitations": [
+    "Exact surfaces/normals and inward probes are Oracle supervision",
+    "No fixed patch boundary or global learned field in the diagnostic LP",
+    "Same analytic planes resampled; not independent test objects/views",
+    "Two-level failure cannot distinguish noise from insufficient fine resolution",
+    "Finite linear feasibility is not a signed-distance or topology certificate",
+    "Scheduler layout/initialization are constructed; no practical advantage proven",
+    "Mesh outer envelope and base are known analytic fixtures",
+    "Whole small CPU volume used for MC; not streaming GPU extraction"
+  ]
+}

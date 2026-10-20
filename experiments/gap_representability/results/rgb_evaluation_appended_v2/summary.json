@@ -1,0 +1,73 @@
+{
+  "status": "completed",
+  "validation_role": "training_replay",
+  "evidence_quality": [
+    {
+      "split": "initial_train",
+      "surface_count": 160,
+      "surface_sdf_abs_median": 0.0007596255654160611,
+      "surface_sdf_abs_p95": 0.0025022963443990403,
+      "free_gt_occupied_fraction": 0.0,
+      "inside_probe_gt_outside_fraction": 0.0
+    },
+    {
+      "split": "appended_training_observations",
+      "surface_count": 160,
+      "surface_sdf_abs_median": 0.0007166156532224244,
+      "surface_sdf_abs_p95": 0.002712194680556128,
+      "free_gt_occupied_fraction": 0.0,
+      "inside_probe_gt_outside_fraction": 0.0
+    }
+  ],
+  "metrics": [
+    {
+      "method": "nodes_8",
+      "nodes": 8,
+      "observation_role": "training_replay",
+      "check_max_eta": 3.000000012447643,
+      "check_p95_eta": 3.000000009379338,
+      "check_free_occupied_fraction": 1.0,
+      "gap_roi_occupied_fraction": 1.0,
+      "solid_probe_recall": 1.0,
+      "notch_straight_path_fraction": 0.0
+    },
+    {
+      "method": "nodes_27",
+      "nodes": 27,
+      "observation_role": "training_replay",
+      "check_max_eta": 0.2561241071816528,
+      "check_p95_eta": 0.09860110958952772,
+      "check_free_occupied_fraction": 0.0,
+      "gap_roi_occupied_fraction": 0.0,
+      "solid_probe_recall": 1.0,
+      "notch_straight_path_fraction": 1.0
+    },
+    {
+      "method": "nodes_125",
+      "nodes": 125,
+      "observation_role": "training_replay",
+      "check_max_eta": 0.1962934435626991,
+      "check_p95_eta": 0.12269307706093181,
+      "check_free_occupied_fraction": 0.0,
+      "gap_roi_occupied_fraction": 0.0031061876357239065,
+      "solid_probe_recall": 0.9995946337226137,
+      "notch_straight_path_fraction": 0.926829268292683
+    }
+  ],
+  "source_sha256": {
+    "run_smoke.py": "de1d965f11b197cec6ce0078ce8c67b5c8adfda55f7656a9a11f58ec654838a2",
+    "render_synthetic.py": "3b6d0bb30f6357dbdf9979d13da524860d624e88fadfd7e51ff6a60754eaad1a",
+    "rgb_frontend.py": "66bff6ec694cd51273cf4fcdb7febd0cdaecb35ace6a9e26adb89c53853d6de2",
+    "fit_image_evidence.py": "e4a6ac99a5d202487be956562caa4e22d4816268302496ba603b5bf5346957d3",
+    "evaluate_rgb.py": "72f6308da68d10f99e612f54bae6abf6cd5b34c1aec80691db826d3314976a67"
+  },
+  "interpretation": "Single synthetic development object; image-derived local surfaces with GT poses/masks, known outer scaffold",
+  "limitations": [
+    "All-view debugging preceded the even/odd development split",
+    "No untouched test object or estimated-pose/SAM evaluation",
+    "Sparse SIFT triangulation, not complete MVS",
+    "Extra inferred inward probes and manually shared ROI",
+    "No automatic block selection or same-capacity comparison",
+    "No GPU training/VRAM peak measured"
+  ]
+}

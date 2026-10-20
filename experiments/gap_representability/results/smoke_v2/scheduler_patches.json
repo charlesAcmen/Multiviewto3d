@@ -1,0 +1,86 @@
+[
+  {
+    "index": 0,
+    "kind": "plane",
+    "initial_residual": 32.00000000000001,
+    "gain": 0.0,
+    "seconds": 0.005735800004913472
+  },
+  {
+    "index": 1,
+    "kind": "gap",
+    "initial_residual": 8.0,
+    "gain": 3.0000000000000075,
+    "seconds": 0.0062646000005770475
+  },
+  {
+    "index": 2,
+    "kind": "contradiction",
+    "initial_residual": 8.000000000000002,
+    "gain": 0.0,
+    "seconds": 0.006400100013706833
+  },
+  {
+    "index": 3,
+    "kind": "plane",
+    "initial_residual": 32.00000000000001,
+    "gain": 0.0,
+    "seconds": 0.005704800001694821
+  },
+  {
+    "index": 4,
+    "kind": "gap",
+    "initial_residual": 8.0,
+    "gain": 2.9999999999999987,
+    "seconds": 0.0061510999948950484
+  },
+  {
+    "index": 5,
+    "kind": "contradiction",
+    "initial_residual": 8.000000000000002,
+    "gain": 0.0,
+    "seconds": 0.006114199990406632
+  },
+  {
+    "index": 6,
+    "kind": "plane",
+    "initial_residual": 32.00000000000001,
+    "gain": 0.0,
+    "seconds": 0.005610199994407594
+  },
+  {
+    "index": 7,
+    "kind": "gap",
+    "initial_residual": 8.000000000000002,
+    "gain": 2.9999999999999996,
+    "seconds": 0.006339400017168373
+  },
+  {
+    "index": 8,
+    "kind": "contradiction",
+    "initial_residual": 8.000000000000002,
+    "gain": 0.0,
+    "seconds": 0.006192899993038736
+  },
+  {
+    "index": 9,
+    "kind": "plane",
+    "initial_residual": 32.0,
+    "gain": 0.0,
+    "seconds": 0.005587399995420128
+  },
+  {
+    "index": 10,
+    "kind": "gap",
+    "initial_residual": 8.0,
+    "gain": 3.00000000000001,
+    "seconds": 0.006389899994246662
+  },
+  {
+    "index": 11,
+    "kind": "contradiction",
+    "initial_residual": 8.000000000000002,
+    "gain": 0.0,
+    "seconds": 0.0061627999966731295
+  }
+]

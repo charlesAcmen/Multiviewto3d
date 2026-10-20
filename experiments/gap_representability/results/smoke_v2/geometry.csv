@@ -1,0 +1,6 @@
+method,gap_occupied_fraction,solid_probe_recall,vertices,faces,extraction_resolution,learned_nodes
+ground_truth,0.0,1.0,30274,60544,81,0
+coarse,1.0,1.0,26074,52144,81,8
+refined,0.03489845122798414,1.0,31996,63992,81,27
+stabilized,0.02210780107065506,1.0,31510,63016,81,27
+air_only,0.0,0.0,12774,25544,81,0

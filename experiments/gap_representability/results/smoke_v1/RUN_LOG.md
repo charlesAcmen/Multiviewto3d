@@ -1,0 +1,6 @@
+- 0.00s: Started CPU-only manufactured Oracle experiment; no images or GPU training.
+- 0.03s: Interpolation, LP residual, nesting, and branch regression checks passed.
+- 0.59s: Saved 48 diagnostic cases and their explicit Oracle evidence.
+- 0.79s: Saved tolerance ablations and a manufactured scheduling stress test (not a scene benchmark).
+- 2.30s: Exported four explicit OBJ meshes with the shared known scaffold; saved ROI metrics.
+- 6.57s: Finished; raw metrics, OBJ meshes, figures, environment, and limitations saved.

@@ -1,0 +1,4 @@
+.venv-gap-smoke/
+.work-tmp/
+__pycache__/
+*.pyc

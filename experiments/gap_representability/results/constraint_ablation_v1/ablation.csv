@@ -1,0 +1,13 @@
+normals,inside_probes,free_margin,coarse_eta,fine_eta
+False,False,0,0.0,0.0
+False,False,0.01,0.2,0.0
+False,False,0.04,0.9499999999999995,0.0
+True,False,0,2.0,0.0
+True,False,0.01,2.0,0.0
+True,False,0.04,2.0,0.0
+False,True,0,2.0000000000000004,0.0
+False,True,0.01,2.2500000000000004,0.0
+False,True,0.04,3.0000000000000004,0.0
+True,True,0,2.0,0.0
+True,True,0.01,2.2499999999999996,0.0
+True,True,0.04,2.9999999999999996,0.0

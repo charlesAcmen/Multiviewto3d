@@ -1,0 +1,12 @@
+{
+  "partition_of_unity": true,
+  "trilinear_exactness": true,
+  "derivative": true,
+  "nested_prolongation": true,
+  "known_branch_cases": true,
+  "unresolved_gap_eta": [
+    3.000000000000005,
+    3.0000000000000004,
+    0.0
+  ]
+}

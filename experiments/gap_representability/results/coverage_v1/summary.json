@@ -1,0 +1,79 @@
+{
+  "status": "completed",
+  "elapsed_seconds": 4.325591300002998,
+  "peak_working_set_bytes": 304119808,
+  "gpu_used": false,
+  "source_sha256": {
+    "run_smoke.py": "b69893fcdf90ed136551c1023fbd47f82ba47d6df557337faf558461a457eae5",
+    "run_coverage.py": "a33992d415c2299310374e22115a53dc07ba17041a6ea1b4c8aaf07f4c90963e"
+  },
+  "resampled_violation": {
+    "sparse_3": 1.1381275649573344,
+    "full_3": 1.0000115319153124e-08
+  },
+  "sparse_surface_points": 24,
+  "full_surface_points": 50,
+  "limitations": [
+    "Extra full-window Oracle observations; not a proposed automatic data source",
+    "No RGB, estimated pose, SAM, MVS, or GPU reconstruction",
+    "Known outer scaffold and base shared across arms",
+    "Straight-path samples and volume probes are not continuous topology certificates"
+  ],
+  "metrics": [
+    {
+      "method": "ground_truth",
+      "nodes": 0,
+      "eta": null,
+      "gap_occupied_fraction": 0.0,
+      "solid_probe_recall": 1.0,
+      "notch_straight_path_fraction": 1.0,
+      "notch_path_count": 41,
+      "vertices": 30274,
+      "faces": 60544
+    },
+    {
+      "method": "sparse_2",
+      "nodes": 8,
+      "eta": 2.9999999999999996,
+      "gap_occupied_fraction": 1.0,
+      "solid_probe_recall": 1.0,
+      "notch_straight_path_fraction": 0.0,
+      "notch_path_count": 41,
+      "vertices": 26074,
+      "faces": 52144
+    },
+    {
+      "method": "sparse_3",
+      "nodes": 27,
+      "eta": 0.0,
+      "gap_occupied_fraction": 0.024176124709421577,
+      "solid_probe_recall": 1.0,
+      "notch_straight_path_fraction": 1.0,
+      "notch_path_count": 41,
+      "vertices": 31510,
+      "faces": 63016
+    },
+    {
+      "method": "full_2",
+      "nodes": 8,
+      "eta": 2.9999999999999996,
+      "gap_occupied_fraction": 1.0,
+      "solid_probe_recall": 1.0,
+      "notch_straight_path_fraction": 0.0,
+      "notch_path_count": 41,
+      "vertices": 26074,
+      "faces": 52144
+    },
+    {
+      "method": "full_3",
+      "nodes": 27,
+      "eta": 0.0,
+      "gap_occupied_fraction": 0.0,
+      "solid_probe_recall": 1.0,
+      "notch_straight_path_fraction": 1.0,
+      "notch_path_count": 41,
+      "vertices": 30274,
+      "faces": 60544
+    }
+  ]
+}
