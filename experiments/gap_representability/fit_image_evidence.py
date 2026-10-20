@@ -78,6 +78,8 @@ def main():
     p.add_argument("--evidence",type=Path,required=True)
     p.add_argument("--output",type=Path,required=True)
     p.add_argument("--fit-method",choices=["tv","qp"],default="tv")
+    p.add_argument("--fields-only",action="store_true",
+                   help="Skip the fork-specific known scaffold; use a separate local evaluator.")
     a=p.parse_args()
     out=a.output.resolve()
     if out.exists() and any(out.iterdir()): raise SystemExit("Choose fresh output directory")
@@ -98,15 +100,16 @@ def main():
             row["qp_status"]=str(ex)
         csv_write(out/"diagnostics.csv",rows)
     np.savez(out/"fields.npz",**{k:f["z"] for k,f in fits.items()})
-    pts=grid_points(81)
-    for name,fit in fits.items():
-        field=object_field(pts,evaluate(pts,fit)).reshape((81,)*3)
-        if field.min()<0<field.max():
-            v,f,_,_=marching_cubes(field,0,spacing=(1/80,)*3)
-            write_obj(out/f"{name}_shared_scaffold.obj",v,f)
+    if not a.fields_only:
+        pts=grid_points(81)
+        for name,fit in fits.items():
+            field=object_field(pts,evaluate(pts,fit)).reshape((81,)*3)
+            if field.min()<0<field.max():
+                v,f,_,_=marching_cubes(field,0,spacing=(1/80,)*3)
+                write_obj(out/f"{name}_shared_scaffold.obj",v,f)
     report=dict(evidence=str(a.evidence.resolve()),elapsed_seconds=time.perf_counter()-start,diagnostics=rows,
                 status="completed" if len(fits)==3 else "partial_fit_failure",fit_method=a.fit_method,osqp=osqp.__version__,
-                known_scaffold_for_display=True,no_gt_geometry_used_for_fit=True)
+                known_scaffold_for_display=not a.fields_only,no_gt_geometry_used_for_fit=True)
     (out/"summary.json").write_text(json.dumps(report,indent=2));print(json.dumps(report,indent=2))
 
 

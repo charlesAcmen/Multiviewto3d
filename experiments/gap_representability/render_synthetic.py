@@ -1,4 +1,4 @@
-"""Render a static textured rigid fork to RGB/masks/calibrated cameras on CPU.
+"""Render a textured fork or closed window to RGB/masks/known cameras on CPU.
 
 The analytic boxes are used ONLY here and in evaluation. Reconstruction reads
 the image directory and cameras.npz, never GT depth, normals, or correspondences.
@@ -34,22 +34,31 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--size", type=int, default=512)
+    p.add_argument("--shape", choices=["fork", "window"], default="fork")
+    p.add_argument("--gap-width", type=float, default=.24)
+    p.add_argument("--seed", type=int, default=20261020)
     args = p.parse_args()
+    if not 0 < args.gap_width < .4:
+        p.error("--gap-width must be between 0 and .4 for the fixed local study ROI")
     out = args.output.resolve()
     if out.exists() and any(out.iterdir()):
         raise SystemExit("Choose fresh output directory")
     (out / "rgb").mkdir(parents=True)
     (out / "mask").mkdir()
     start = time.perf_counter()
-    boxes = np.array([[[.05, .1, .12], [.38, .9, .88]],
-                      [[.62, .1, .12], [.95, .9, .88]],
+    left, right = .5 - args.gap_width / 2, .5 + args.gap_width / 2
+    boxes = np.array([[[.05, .1, .12], [left, .9, .88]],
+                      [[right, .1, .12], [.95, .9, .88]],
                       [[.05, .1, .12], [.95, .28, .88]]])
+    if args.shape == "window":
+        boxes = np.concatenate([boxes, [[[.05, .72, .12], [.95, .9, .88]]]])
     k, rotations, centers, projections = cameras(args.size)
     np.savez(out / "cameras.npz", K=k, R=rotations, centers=centers, P=projections)
-    (out / "ground_truth_only.json").write_text(json.dumps({"boxes": boxes.tolist()}, indent=2))
-    rng = np.random.default_rng(20261020)
+    (out / "ground_truth_only.json").write_text(json.dumps(
+        {"boxes": boxes.tolist(), "shape": args.shape, "gap_width": args.gap_width}, indent=2))
+    rng = np.random.default_rng(args.seed)
     textures = []
-    for _ in range(18):
+    for _ in range(6 * len(boxes)):
         fine = cv2.resize(rng.uniform(20, 240, (100, 100)).astype(np.float32), (512, 512), interpolation=cv2.INTER_CUBIC)
         coarse = cv2.resize(rng.uniform(20, 240, (22, 22)).astype(np.float32), (512, 512), interpolation=cv2.INTER_CUBIC)
         tex = np.clip(.7 * fine + .3 * coarse, 0, 255)
@@ -77,7 +86,7 @@ def main():
         valid = box_ids >= 0
         world = eye + directions[valid] * best[valid, None]
         valid_ids = np.flatnonzero(valid)
-        for bi in range(3):
+        for bi in range(len(boxes)):
             for face in range(6):
                 subset = (box_ids[valid] == bi) & (faces[valid] == face)
                 if not subset.any():
@@ -97,7 +106,8 @@ def main():
     (out / "manifest.json").write_text(json.dumps(dict(views=len(centers), resolution=args.size,
         elapsed_seconds=time.perf_counter()-start, coordinate_frame="fixed object [0,1]^3",
         input_assumptions="GT pinhole cameras and GT target masks; static textured opaque analytic object",
-        no_depth_saved=True, random_seed=20261020, cv2=cv2.__version__), indent=2))
+        no_depth_saved=True, shape=args.shape, gap_width=args.gap_width,
+        random_seed=args.seed, cv2=cv2.__version__), indent=2))
 
 
 if __name__ == "__main__":

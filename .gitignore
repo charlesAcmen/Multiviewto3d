@@ -1,4 +1,23 @@
-.venv-gap-smoke/
+# Machine-local environments and caches.
+.venv*/
 .work-tmp/
 __pycache__/
-*.pyc
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# Reproducible image inputs, downloaded datasets and intermediate arrays.
+/experiments/*/data/
+
+# New runs: sync small evidence receipts, not images, meshes, arrays or snapshots.
+# Existing tracked results are deliberately retained; these rules are not cleanup.
+/experiments/*/results/**
+!/experiments/*/results/**/
+!/experiments/*/results/**/*.json
+!/experiments/*/results/**/*.csv
+!/experiments/*/results/**/*.md
+
+# Put a few deliberately selected report figures under research/figures/.
+# New paper downloads should have a URL/hash entry in research/evidence instead.
+/research/evidence/*.pdf
+/papers/*.pdf

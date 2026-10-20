@@ -1,9 +1,9 @@
 # RGB接口重放（CPU）
 
-结果说明见[RGB实测报告](../../research/2026-10-20_RGB_INTERFACE_RESULTS.md)。常规Python3.12环境先按[README](README.md)安装`requirements.lock.txt`。当前本机已有独立环境。各脚本要求新输出目录，不覆盖记录。
+结果说明见[RGB实测报告](../../research/2026-10-20_RGB_INTERFACE_RESULTS.md)。常规Python3.12环境先按[README](README.md)安装`requirements.lock.txt`。虚拟环境不随 Git 同步，换机器需重新建立。各脚本要求新输出目录，不覆盖记录。
 
 ```powershell
-Set-Location 'D:\repos\Multiviewto3d'
+# 在本机仓库根目录运行（包含 AGENTS.md 与 experiments/ 的目录）。
 . .\.venv-gap-smoke\Scripts\Activate.ps1
 $env:MPLCONFIGDIR = Join-Path (Get-Location) '.work-tmp\matplotlib'
 $rgbRun = Join-Path (Get-Location) ('experiments\gap_representability\results\replay-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))

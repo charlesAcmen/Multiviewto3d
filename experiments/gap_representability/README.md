@@ -42,10 +42,10 @@
 
 ## 本机直接复现
 
-项目独立环境已建立。以普通PowerShell运行（本轮Codex沙箱不能读取pip继承权限后的包，工具实际运行使用了获准的普通用户权限）：
+原实验机器已建立独立环境；新机器须按下面的安装步骤建立，虚拟环境不随 Git 同步。以普通 PowerShell 从仓库根目录运行：
 
 ```powershell
-Set-Location 'D:\repos\Multiviewto3d'
+# 当前目录应包含 AGENTS.md 与 experiments/，不依赖另一台机器的盘符。
 . .\.venv-gap-smoke\Scripts\Activate.ps1
 $env:MPLCONFIGDIR = Join-Path (Get-Location) '.work-tmp\matplotlib'
 $runStamp = Get-Date -Format 'yyyyMMdd-HHmmss'
@@ -74,6 +74,6 @@ deactivate
 
 `smoke_v2`一次运行约5.50秒、CPU进程峰值工作集328.6MiB；`coverage_v1`约4.33秒、290.0MiB。时间从主程序开始计，不含安装/模块导入；不是严谨速度基准。显存字段为“不适用”，设备快照不当峰值。
 
-当前没有：RGB输入闭环、位姿/Mask误差实验、相机/表面前端、真实候选块预算比较、全局场拼接、流式提取、真实细杆厚度/Chamfer/F-score/法线评价、完整阶段GPU峰值。
+E0 本身没有 RGB 输入；同日 E1 已接通合成 RGB 的稀疏表面前端和局部拟合，见文首更新。整个项目仍没有：完整物体 RGB 闭环、位姿/Mask 误差实验、真实候选块预算比较、全局场拼接、流式提取、真实细杆厚度/Chamfer/F-score/法线评价、完整阶段 GPU 峰值。
 
 下一步按[一周执行计划](../../research/2026-10-20_WEEK_EXECUTION_PLAN.md)：先让真实图像生成可靠FREE与表面证据，再验证同监督、同容量/等时间下判据是否值得保留。基于今天结果，**值得继续小规模实验，但还不能定题或宣称方法有效于真实重建**。
