@@ -100,8 +100,10 @@ def main():
                                   cv2.INTER_LINEAR).reshape(-1, 3) for start in range(0, len(xy), 20000)])
                 shade = [0.85, 0.95, 1.0][axis]
                 rgb[valid_ids[subset]] = (color * shade).astype(np.uint8)
-        cv2.imwrite(str(out / "rgb" / f"{view:03d}.png"), rgb.reshape(args.size, args.size, 3))
-        cv2.imwrite(str(out / "mask" / f"{view:03d}.png"), valid.reshape(args.size, args.size).astype(np.uint8) * 255)
+        rgb_written = cv2.imwrite(str(out / "rgb" / f"{view:03d}.png"), rgb.reshape(args.size, args.size, 3))
+        mask_written = cv2.imwrite(str(out / "mask" / f"{view:03d}.png"), valid.reshape(args.size, args.size).astype(np.uint8) * 255)
+        if not rgb_written or not mask_written:
+            raise OSError(f"Failed to save RGB/Mask for view {view}; preserve partial output")
         print(f"Rendered view {view+1}/{len(centers)}", flush=True)
     (out / "manifest.json").write_text(json.dumps(dict(views=len(centers), resolution=args.size,
         elapsed_seconds=time.perf_counter()-start, coordinate_frame="fixed object [0,1]^3",

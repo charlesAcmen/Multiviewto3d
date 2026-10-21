@@ -13,6 +13,7 @@ import numpy as np
 from scipy.spatial import cKDTree
 from run_smoke import solve, stabilize, evaluate, object_field, grid_points, write_obj, csv_write
 from skimage.measure import marching_cubes
+from run_receipts import sha256_file
 
 
 def project(p, projection):
@@ -28,6 +29,8 @@ def main():
     parser.add_argument("--view-offset", type=int, default=0)
     parser.add_argument("--evidence-only", action="store_true")
     args = parser.parse_args()
+    if args.view_stride < 1 or args.view_offset < 0:
+        parser.error("View stride must be positive and offset nonnegative")
     out = args.output.resolve()
     if out.exists() and any(out.iterdir()):
         raise SystemExit("Choose fresh output directory")
@@ -41,14 +44,27 @@ def main():
     data = args.data.resolve()
     cameras = np.load(data / "cameras.npz")
     ps, centers = cameras["P"], cameras["centers"]
-    images = [cv2.imread(str(f)) for f in sorted((data / "rgb").glob("*.png"))]
-    masks = [cv2.imread(str(f), 0) for f in sorted((data / "mask").glob("*.png"))]
+    image_paths = sorted((data / "rgb").glob("*.png"))
+    mask_paths = sorted((data / "mask").glob("*.png"))
+    expected_names = [f"{i:03d}.png" for i in range(len(ps))]
+    if ([p.name for p in image_paths] != expected_names
+            or [p.name for p in mask_paths] != expected_names):
+        raise ValueError("RGB/Mask filenames must match the camera indices without gaps")
+    images = [cv2.imread(str(f)) for f in image_paths]
+    masks = [cv2.imread(str(f), 0) for f in mask_paths]
+    if any(im is None or mask is None for im, mask in zip(images, masks)):
+        raise ValueError("Unreadable RGB or Mask input; preserve the failed run")
+    if any(im.shape[:2] != mask.shape for im, mask in zip(images, masks)):
+        raise ValueError("Each RGB and Mask must have identical image dimensions")
     view_ids = list(range(args.view_offset, len(images), args.view_stride))
+    if len(view_ids) < 2:
+        raise ValueError("At least two selected views are required")
     images, masks = [images[i] for i in view_ids], [masks[i] for i in view_ids]
     ps, centers = ps[view_ids], centers[view_ids]
+    used_paths = [data / "cameras.npz"] + [p for i in view_ids for p in (image_paths[i], mask_paths[i])]
     (out / "input_manifest.json").write_text(json.dumps(dict(view_ids=view_ids, data=str(data),
-        inputs=["rgb/*.png", "mask/*.png", "cameras.npz"], no_ground_truth_geometry_read=True), indent=2))
-    size = images[0].shape[0]
+        inputs=["rgb/*.png", "mask/*.png", "cameras.npz"], no_ground_truth_geometry_read=True,
+        input_sha256={p.relative_to(data).as_posix(): sha256_file(p) for p in used_paths}), indent=2), encoding="utf-8")
     sift = cv2.SIFT_create(nfeatures=4000, contrastThreshold=0.025, edgeThreshold=12)
     features = [sift.detectAndCompute(cv2.cvtColor(im, cv2.COLOR_BGR2GRAY), cv2.erode(mask, np.ones((5, 5), np.uint8)))
                 for im, mask in zip(images, masks)]
@@ -66,8 +82,11 @@ def main():
         if d1 is None or d2 is None:
             continue
         forward, reverse = matcher.knnMatch(d1, d2, k=2), matcher.knnMatch(d2, d1, k=2)
-        backward = {m.queryIdx: m.trainIdx for m, n in reverse if m.distance < .7 * n.distance}
-        good = [m for m, n in forward if m.distance < .7 * n.distance and backward.get(m.trainIdx) == m.queryIdx]
+        backward = {pair[0].queryIdx: pair[0].trainIdx for pair in reverse
+                    if len(pair) == 2 and pair[0].distance < .7 * pair[1].distance}
+        good = [pair[0] for pair in forward if len(pair) == 2
+                and pair[0].distance < .7 * pair[1].distance
+                and backward.get(pair[0].trainIdx) == pair[0].queryIdx]
         if not good:
             continue
         uv1 = np.array([kp1[m.queryIdx].pt for m in good], dtype=np.float64)
@@ -124,7 +143,9 @@ def main():
         bg = cv2.erode(255 - mask, np.ones((5, 5), np.uint8))
         uv, z = project(candidates, projection)
         pix = np.rint(uv).astype(int)
-        valid = (z > 0) & (pix.min(axis=1) >= 0) & (pix.max(axis=1) < size)
+        height, width = mask.shape
+        valid = ((z > 0) & (pix[:, 0] >= 0) & (pix[:, 0] < width)
+                 & (pix[:, 1] >= 0) & (pix[:, 1] < height))
         voted = np.zeros(len(candidates), bool)
         voted[valid] = bg[pix[valid, 1], pix[valid, 0]] > 0
         first_support[voted & (first_support < 0)] = view

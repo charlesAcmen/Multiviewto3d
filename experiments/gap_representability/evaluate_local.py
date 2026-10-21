@@ -66,6 +66,8 @@ def main():
     projections = cameras["P"][source["view_ids"]]
     masks = [cv2.imread(str(args.data / "mask" / f"{v:03d}.png"), 0)
              for v in source["view_ids"]]
+    if not masks or any(mask is None for mask in masks):
+        raise ValueError("Missing or unreadable selected Mask; baseline comparison cannot proceed")
     raw_backgrounds = [255 - mask for mask in masks]
     safe_backgrounds = [cv2.erode(bg, np.ones((5, 5), np.uint8))
                         for bg in raw_backgrounds]
