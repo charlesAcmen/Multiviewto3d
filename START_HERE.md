@@ -8,7 +8,9 @@
 |---|---|
 | 上次已有结果 | `f6ffefc` 中的 E0 机制实验和 E1 单叉子 RGB 接口已在另一台机器运行；本机没有复验 |
 | 最近可讲结论 | 补观测使 27 节点的指定 ROI 实体保留率恢复到 100%；125 节点仍出现误桥，低训练违例不能保证好几何 |
-| 本轮接续 | `f688943` 已包含两机同步规则及孔板/孔宽扫描代码；补齐运行说明，**尚未运行** |
+| 本轮接续 | 已核对 `85c7c3f`：新增运行收据、输入校验和结果复核；**没有新实验结果** |
+| 最新优先级 | 用户要求直接检验多视角驱动的同预算自动细化与共享场接合；孔板全矩阵和交接工具扩展暂缓 |
+| 最新输入约定 | 大量 RGB + 已知准确相机参数/Mask；静置刚体、无外部遮挡；MVS 输出可固定但仍是估计。旧 E1 已用 GT 相机/Mask |
 | 唯一研究假设 | 观测约束的局部可表示性，能否帮助决定何时加自由度，且避免只开缝却削掉实体 |
 | 还没有的证据 | 自动选块收益、同预算优势、真实完整对象、3060 峰值、论文新颖性 |
 
@@ -16,8 +18,9 @@
 
 1. [协作约束](AGENTS.md) → [研究方向](RESEARCH_DIRECTION.md)。
 2. [已运行 RGB 结果](research/2026-10-20_RGB_INTERFACE_RESULTS.md)，尤其看失败与限制。
-3. [本轮逐步进度](research/2026-10-20_CROSS_MACHINE_PROGRESS.md)。
-4. **下一步：由用户按 [WIDTH_STUDY.md](experiments/gap_representability/WIDTH_STUDY.md) 先运行单孔宽冒烟，再看结果决定扫描。**旧实验重放见 [RGB_RUN.md](experiments/gap_representability/RGB_RUN.md)。
+3. **[最新可行性复核](research/2026-10-21_FEASIBILITY_PROGRESS.md)：先读检查点 4 的已知输入约定、源码发现和最小实验，再读检查点 3 的共享场边界。**两机同步历史见 [前轮进度](research/2026-10-20_CROSS_MACHINE_PROGRESS.md)。
+4. 当前核心自动分配尚无可运行入口，不能把 `run_width_study.py` 当成它。已有局部接口命令见 [WIDTH_STUDY.md](experiments/gap_representability/WIDTH_STUDY.md)，旧结果重放见 [RGB_RUN.md](experiments/gap_representability/RGB_RUN.md)。
+5. [DG-Mesh 静态化核读与 insight](research/2026-10-21_DGMESH_STATIC_INSIGHT.md)：Fig.5 的手指间隙确有丢失，未证明由 deform 导致；删除 deform 不自动提升场分辨率。核心方案和本周实验主线未改，没有新运行结果。
 
 ## 两台机器怎样接续
 
