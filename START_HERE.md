@@ -1,6 +1,6 @@
 # Pull 后先读这里
 
-更新：2026-10-20。仓库根目录是包含本文件、`AGENTS.md` 和 `experiments/` 的目录；两台机器的绝对路径可以不同。**运行结果与代码完成状态分开记录。**
+更新：2026-10-21。仓库根目录是包含本文件、`AGENTS.md` 和 `experiments/` 的目录；两台机器的绝对路径可以不同。**运行结果与代码完成状态分开记录。**
 
 ## 当前状态
 
@@ -8,7 +8,7 @@
 |---|---|
 | 上次已有结果 | `f6ffefc` 中的 E0 机制实验和 E1 单叉子 RGB 接口已在另一台机器运行；本机没有复验 |
 | 最近可讲结论 | 补观测使 27 节点的指定 ROI 实体保留率恢复到 100%；125 节点仍出现误桥，低训练违例不能保证好几何 |
-| 本轮接续 | 增加两机同步规则；编写孔板/孔宽扫描和 Mask 雕刻基线，**尚未运行** |
+| 本轮接续 | `f688943` 已包含两机同步规则及孔板/孔宽扫描代码；补齐运行说明，**尚未运行** |
 | 唯一研究假设 | 观测约束的局部可表示性，能否帮助决定何时加自由度，且避免只开缝却削掉实体 |
 | 还没有的证据 | 自动选块收益、同预算优势、真实完整对象、3060 峰值、论文新颖性 |
 
@@ -17,7 +17,7 @@
 1. [协作约束](AGENTS.md) → [研究方向](RESEARCH_DIRECTION.md)。
 2. [已运行 RGB 结果](research/2026-10-20_RGB_INTERFACE_RESULTS.md)，尤其看失败与限制。
 3. [本轮逐步进度](research/2026-10-20_CROSS_MACHINE_PROGRESS.md)。
-4. 要重放旧实验，读 [RGB_RUN.md](experiments/gap_representability/RGB_RUN.md)。新实验入口在本轮进度文档中维护。
+4. **下一步：由用户按 [WIDTH_STUDY.md](experiments/gap_representability/WIDTH_STUDY.md) 先运行单孔宽冒烟，再看结果决定扫描。**旧实验重放见 [RGB_RUN.md](experiments/gap_representability/RGB_RUN.md)。
 
 ## 两台机器怎样接续
 
